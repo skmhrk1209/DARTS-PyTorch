@@ -104,7 +104,7 @@ class DARTS(nn.Module):
             if child not in cell_outputs:
                 cell_outputs[child] = sum(sum(
                     operation(self.forward_cell(cell, reduction, parent, cell_outputs)) * weight
-                    for operation, weight in zip(cell[str(parent, child)], nn.functional.softmax(architecture[str(parent, child)]))
+                    for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))]))
                 ) for parent in self.dag.predecessors(child))
         return cell_outputs[child]
 
