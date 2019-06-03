@@ -237,12 +237,24 @@ def main():
 
                 network_optimizer.step()
 
+                for p in network.parameters():
+                    if p.grad is None:
+                        print("aaaaaaa")
+
                 network_optimizer.zero_grad()
                 architecture_optimizer.zero_grad()
+
+                for p in network.parameters():
+                    if p.grad is None:
+                        print("bbbbbbb")
 
                 val_logits = model(val_images)
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
+
+                for p in network.parameters():
+                    if p.grad is None:
+                        print("ccccccc")
 
                 new_network_parameters, new_network_gradients = zip(
                     *((parameter.clone(), parameter.grad.clone()) for parameter in network.parameters()))
