@@ -42,7 +42,7 @@ class DARTS(nn.Module):
         )
 
         self.network.cells = nn.ModuleList()
-        # NOTE: why multiplier is 3 ?
+        # NOTE: Why multiplier is 3?
         in_channels_1st = self.num_channels * 3
         in_channels_2nd = self.num_channels * 3
         out_channels = self.num_channels
@@ -56,7 +56,7 @@ class DARTS(nn.Module):
                 reduction_output = True
                 out_channels <<= 1
 
-            # NOTE: should be factorized reduce ?
+            # NOTE: Should be factorized reduce?
             cell.conv_1st = Conv2d(
                 in_channels=in_channels_1st,
                 out_channels=out_channels,
