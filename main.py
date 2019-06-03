@@ -236,27 +236,16 @@ def main():
 
                 network_optimizer.step()
 
-                for p in network.parameters():
-                    if p.grad is None:
-                        print("aaaaaaa")
-
                 network_optimizer.zero_grad()
                 architecture_optimizer.zero_grad()
-
-                for p in network.parameters():
-                    if p.grad is None:
-                        print("bbbbbbb")
 
                 val_logits = model(val_images)
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                for p in network.parameters():
-                    if p.grad is None:
-                        print("ccccccc")
+                new_network_parameters  = [parameter.clone() for parameter in network.parameters()]
+                new_network_gradients  = [parameter.grad.clone() for parameter in network.parameters()]
 
-                new_network_parameters, new_network_gradients = zip(
-                    *((parameter.clone(), parameter.grad.clone()) for parameter in network.parameters()))
                 gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in new_network_gradients]))
 
                 for parameter, old_parameter, new_gradient in zip(network.parameters(), old_network_parameters, new_network_gradients):
