@@ -120,8 +120,6 @@ class DARTS(nn.Module):
             self.forward_cell(cell, i in self.reduction_cells, self.num_nodes - 1, cell_outputs)
             outputs.append(torch.cat(list(cell_outputs.values())[2:], dim=1))
         output = outputs[-1]
-        print(output.shape)
-        output = self.network.global_avg_pool2d(output)
-        print(output.shape)
+        output = self.network.global_avg_pool2d(output).squeeze()
         output = self.network.linear(output)
         return output
