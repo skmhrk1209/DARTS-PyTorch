@@ -236,18 +236,18 @@ def main():
 
                 network_optimizer.step()
 
-                print(list(network.parameters())[0].grad)
+                print(list(network.parameters())[0].grad is None)
 
                 network_optimizer.zero_grad()
                 architecture_optimizer.zero_grad()
 
-                print(list(network.parameters())[0].grad)
+                print(list(network.parameters())[0].grad is None)
 
                 val_logits = model(val_images)
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                print(list(network.parameters())[0].grad)
+                print(list(network.parameters())[0].grad is None)
 
                 new_network_parameters = [parameter.clone() for parameter in network.parameters()]
                 norm = torch.norm(torch.cat([parameter.grad.reshape(-1) for parameter in new_network_parameters]))
