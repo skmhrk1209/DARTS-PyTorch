@@ -226,8 +226,7 @@ def main():
                 val_images = val_images.cuda()
                 val_labels = val_labels.cuda()
 
-                old_network_parameters, old_network_gradients = zip(
-                    *((parameter.clone(), parameter.grad.clone()) for parameter in network.parameters()))
+                old_network_parameters  = [parameter.clone() for parameter in network.parameters()]
 
                 network_optimizer.zero_grad()
 
