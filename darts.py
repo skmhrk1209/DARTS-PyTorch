@@ -18,7 +18,6 @@ class DARTS(nn.Module):
         self.num_channels = num_channels
 
         self.build_dag()
-        print(list(self.dag.edges()))
         self.build_network()
 
     def build_dag(self):
@@ -81,6 +80,8 @@ class DARTS(nn.Module):
                 ])
                 for parent, child, attribute in self.dag.edges(data=True)
             })
+
+            print(cell.edges)
 
             self.network.cells.append(cell)
             in_channels_1st = in_channels_2nd
