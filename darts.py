@@ -16,6 +16,7 @@ class DARTS(nn.Module):
         self.num_cells = num_cells
         self.reduction_cells = reduction_cells
         self.num_channels = num_channels
+        self.num_classes = num_classes
 
         self.build_dag()
         self.build_network()
