@@ -226,7 +226,7 @@ def main():
                 val_images = val_images.cuda()
                 val_labels = val_labels.cuda()
 
-                old_network_parameters  = [parameter.clone() for parameter in network.parameters()]
+                old_network_parameters = [parameter.clone() for parameter in network.parameters()]
 
                 network_optimizer.zero_grad()
 
@@ -243,8 +243,8 @@ def main():
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                new_network_parameters  = [parameter.clone() for parameter in network.parameters()]
-                new_network_gradients  = [parameter.grad.clone() for parameter in network.parameters()]
+                new_network_parameters = [parameter.clone() for parameter in network.parameters()]
+                new_network_gradients = [parameter.grad.clone() for parameter in network.parameters()]
 
                 gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in new_network_gradients]))
 
@@ -259,7 +259,7 @@ def main():
                     parameter.data.copy_(old_parameter - new_gradient * config.epsilon)
 
                 train_logits = model(train_images)
-                train_loss = criterion(train_logits, train_labels) * +(config.network_lr / (2 * config.epsilon / gradient_norm))
+                train_loss = criterion(train_logits, train_labels) * (config.network_lr / (2 * config.epsilon / gradient_norm))
                 train_loss.backward()
 
                 for parameter, new_parameter in zip(network.parameters(), new_network_parameters):
