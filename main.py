@@ -252,18 +252,18 @@ def main():
                     parameter.data.copy_(old_parameter + new_gradient * config.epsilon)
 
                 train_logits = model(train_images)
-                train_loss = criterion(train_logits, train_labels) * -(config.lr / (2 * config.epsilon / gradient_norm))
+                train_loss = criterion(train_logits, train_labels) * -(config.network_lr / (2 * config.epsilon / gradient_norm))
                 train_loss.backward()
 
                 for parameter, old_parameter, new_gradient in zip(network.parameters(), old_network_parameters, new_network_gradients):
                     parameter.data.copy_(old_parameter - new_gradient * config.epsilon)
 
                 train_logits = model(train_images)
-                train_loss = criterion(train_logits, train_labels) * +(config.lr / (2 * config.epsilon / gradient_norm))
+                train_loss = criterion(train_logits, train_labels) * +(config.network_lr / (2 * config.epsilon / gradient_norm))
                 train_loss.backward()
 
                 for parameter, new_parameter in zip(network.parameters(), new_network_parameters):
-                    parameter.data.copy_(old_parameter)
+                    parameter.data.copy_(new_parameter)
 
                 architecture_optimizer.step()
 
