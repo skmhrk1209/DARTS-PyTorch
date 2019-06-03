@@ -18,6 +18,7 @@ class DARTS(nn.Module):
         self.num_channels = num_channels
 
         self.build_dag()
+        print(list(self.dag.edges()))
         self.build_network()
 
     def build_dag(self):
