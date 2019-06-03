@@ -54,9 +54,6 @@ def main():
         local_rank=distributed.get_rank() % torch.cuda.device_count()
     ))
 
-    config.global_batch_size = config.local_batch_size * config.world_size
-    config.lr = config.lr * config.global_batch_size / 256
-
     if config.global_rank == 0:
         print(f'config: {config}')
 
@@ -135,8 +132,8 @@ def main():
     )
 
     model = nn.parallel.distributed.DistributedDataParallel(
-        module=model, 
-        device_ids=[config.local_rank], 
+        module=model,
+        device_ids=[config.local_rank],
         output_device=config.local_rank
     )
 
