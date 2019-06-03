@@ -81,7 +81,7 @@ class DARTS(nn.Module):
                 for parent, child, attribute in self.dag.edges(data=True)
             })
 
-            print("aaaaaaaa", str((0, 5)) in cell.edges)
+            print(cell.edges[str((0, 5)])
 
             self.network.cells.append(cell)
             in_channels_1st = in_channels_2nd
