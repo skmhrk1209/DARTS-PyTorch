@@ -81,8 +81,6 @@ class DARTS(nn.Module):
                 for parent, child, attribute in self.dag.edges(data=True)
             })
 
-            print(cell.edges[str((0, 5))])
-
             self.network.cells.append(cell)
             in_channels_1st = in_channels_2nd
             in_channels_2nd = out_channels * (self.num_nodes - 2)
@@ -106,7 +104,7 @@ class DARTS(nn.Module):
             if child not in cell_outputs:
                 cell_outputs[child] = sum(sum(
                     operation(self.forward_cell(cell, reduction, parent, cell_outputs)) * weight
-                    for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))]))
+                    for operation, weight in zip(cell.edges[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))]))
                 ) for parent in self.dag.predecessors(child))
         return cell_outputs[child]
 
