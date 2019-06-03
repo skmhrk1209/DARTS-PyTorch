@@ -257,7 +257,7 @@ def main():
 
                 new_network_parameters, new_network_gradients = zip(
                     *((parameter.clone(), parameter.grad.clone()) for parameter in network.parameters()))
-                gradient_norm = torch.norm(torch.cat([parameter.grad.reshape(-1) for parameter in new_network_parameters]))
+                gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in new_network_gradients]))
 
                 for parameter, old_parameter, new_gradient in zip(network.parameters(), old_network_parameters, new_network_gradients):
                     parameter.copy_(old_parameter + new_gradient * config.epsilon)
