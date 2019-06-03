@@ -137,7 +137,7 @@ def main():
         module=model,
         device_ids=[config.local_rank],
         output_device=config.local_rank,
-        find_unused_parameters=True
+        #find_unused_parameters=True
     )
 
     last_epoch = -1
