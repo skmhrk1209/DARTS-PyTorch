@@ -244,7 +244,7 @@ def main():
                 val_loss.backward()
 
                 new_network_parameters = [parameter.clone() for parameter in network.parameters()]
-                norm = torch.norm(torch.cat([parameter.reshape(-1) for parameter in new_network_parameters]))
+                norm = torch.norm(torch.cat([parameter.grad.reshape(-1) for parameter in new_network_parameters]))
 
                 for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
                     parameter.copy_(old_parameter + new_parameter.grad * config.epsilon)
