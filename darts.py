@@ -88,7 +88,7 @@ class DARTS(nn.Module):
             reduction_input = reduction_output
 
         self.network.global_avg_pool2d = nn.AdaptiveAvgPool2d(1)
-        self.network.linear = nn.Linear(in_channels_2nd, num_classes, bias=True)
+        self.network.linear = nn.Linear(in_channels_2nd, self.num_classes, bias=True)
 
         self.architecture = nn.ParameterDict()
 
