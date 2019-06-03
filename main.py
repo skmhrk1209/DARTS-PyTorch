@@ -117,15 +117,18 @@ def main():
         num_channels=16
     ).cuda()
 
+    network = model.network
+    architecture = model.architecture
+
     criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
     network_optimizer = torch.optim.SGD(
-        params=model.network.parameters(),
+        params=network.parameters(),
         lr=config.network_lr,
         momentum=config.network_momentum,
         weight_decay=config.network_weight_decay
     )
     architecture_optimizer = torch.optim.Adam(
-        params=model.architecture.parameters(),
+        params=architecture.parameters(),
         lr=config.architecture_lr,
         betas=(config.architecture_beta1, config.architecture_beta2),
         weight_decay=config.architecture_weight_decay
@@ -223,7 +226,7 @@ def main():
                 val_images = val_images.cuda()
                 val_labels = val_labels.cuda()
 
-                old_network_parameters = copy.deepcopy(model.network.parameters())
+                old_network_parameters = copy.deepcopy(network.parameters())
 
                 network_optimizer.zero_grad()
 
@@ -240,16 +243,16 @@ def main():
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                new_network_parameters = copy.deepcopy(model.network.parameters())
+                new_network_parameters = copy.deepcopy(network.parameters())
 
-                for parameter, old_parameter, new_parameter in zip(model.network.parameters(), old_network_parameters, new_network_parameters):
+                for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
                     parameter.copy_(old_parameter + new_parameter.grad * config.epsilon)
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * -(config.lr / config.epsilon / 2)
                 train_loss.backward()
 
-                for parameter, old_parameter, new_parameter in zip(model.network.parameters(), old_network_parameters, new_network_parameters):
+                for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
                     parameter.copy_(old_parameter - new_parameter.grad * config.epsilon)
 
                 train_logits = model(train_images)

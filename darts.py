@@ -89,12 +89,12 @@ class DARTS(nn.Module):
         self.architecture = nn.ParameterDict()
 
         self.architecture.normal = nn.ParameterDict({
-            str((parent, child)): nn.Parameter(torch.ones(len(attribute['operations'])))
+            str((parent, child)): nn.Parameter(torch.zeros(len(attribute['operations'])))
             for parent, child, attribute in self.dag.edges(data=True)
         })
 
         self.architecture.reduction = nn.ParameterDict({
-            str((parent, child)): nn.Parameter(torch.ones(len(attribute['operations'])))
+            str((parent, child)): nn.Parameter(torch.zeros(len(attribute['operations'])))
             for parent, child, attribute in self.dag.edges(data=True)
         })
 
