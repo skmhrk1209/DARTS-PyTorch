@@ -172,7 +172,8 @@ def main():
                     mean=(0.49139968, 0.48215827, 0.44653124),
                     std=(0.24703233, 0.24348505, 0.26158768)
                 )
-            ])
+            ]),
+            download=True
         )
         val_dataset = datasets.CIFAR10(
             root="cifar10",
@@ -183,7 +184,8 @@ def main():
                     mean=(0.49139968, 0.48215827, 0.44653124),
                     std=(0.24703233, 0.24348505, 0.26158768)
                 )
-            ])
+            ]),
+            download=True
         )
 
         train_sampler = utils.data.distributed.DistributedSampler(train_dataset)
