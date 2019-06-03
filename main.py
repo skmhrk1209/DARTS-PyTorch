@@ -135,13 +135,11 @@ def main():
         weight_decay=config.architecture_weight_decay
     )
 
-    '''
     model = nn.parallel.distributed.DistributedDataParallel(
         module=model,
         device_ids=[config.local_rank],
         output_device=config.local_rank
     )
-    '''
 
     last_epoch = -1
     global_step = 0
@@ -247,19 +245,20 @@ def main():
                 val_loss.backward()
 
                 new_network_parameters = copy.deepcopy(list(network.parameters()))
+                norm = torch.norm(torch.cat([parameter.reshape(-1) for parameter in new_network_parameters]))
 
                 for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
                     parameter.copy_(old_parameter + new_parameter.grad * config.epsilon)
 
                 train_logits = model(train_images)
-                train_loss = criterion(train_logits, train_labels) * -(config.lr / config.epsilon / 2)
+                train_loss = criterion(train_logits, train_labels) * -(config.lr / (2 * config.epsilon / norm))
                 train_loss.backward()
 
                 for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
                     parameter.copy_(old_parameter - new_parameter.grad * config.epsilon)
 
                 train_logits = model(train_images)
-                train_loss = criterion(train_logits, train_labels) * +(config.lr / config.epsilon / 2)
+                train_loss = criterion(train_logits, train_labels) * +(config.lr / (2 * config.epsilon / norm))
                 train_loss.backward()
 
                 architecture_optimizer.step()
