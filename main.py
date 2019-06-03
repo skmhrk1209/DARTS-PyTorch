@@ -231,7 +231,6 @@ def main():
                 network_optimizer.zero_grad()
 
                 train_logits = model(train_images)
-                print(train_logits.shape, train_labels.shape)
                 train_loss = criterion(train_logits, train_labels)
                 train_loss.backward()
 

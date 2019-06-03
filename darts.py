@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 class DARTS(nn.Module):
 
-    def __init__(self, operations, num_nodes, num_cells, reduction_cells, num_channels):
+    def __init__(self, operations, num_nodes, num_cells, reduction_cells, num_channels, num_classes):
 
         super().__init__()
 
@@ -86,6 +86,9 @@ class DARTS(nn.Module):
             in_channels_2nd = out_channels * (self.num_nodes - 2)
             reduction_input = reduction_output
 
+        self.network.global_avg_pool2d = nn.AdaptiveAvgPool2d(1)
+        self.network.linear = nn.Linear(in_channels_2nd, num_classes, bias=True)
+
         self.architecture = nn.ParameterDict()
 
         self.architecture.normal = nn.ParameterDict({
@@ -115,4 +118,7 @@ class DARTS(nn.Module):
             cell_outputs = {0: cell.conv_1st(outputs[-2]), 1: cell.conv_2nd(outputs[-1])}
             self.forward_cell(cell, i in self.reduction_cells, self.num_nodes - 1, cell_outputs)
             outputs.append(torch.cat(list(cell_outputs.values())[2:], dim=1))
-        return outputs[-1]
+        output = outputs[-1]
+        output = self.network.global_avg_pool2d(output)
+        output = self.network.linear(output)
+        return output
