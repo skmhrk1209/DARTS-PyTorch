@@ -226,7 +226,7 @@ def main():
                 val_images = val_images.cuda()
                 val_labels = val_labels.cuda()
 
-                old_network_parameters = copy.deepcopy(network.parameters())
+                old_network_parameters = copy.deepcopy(list(network.parameters()))
 
                 network_optimizer.zero_grad()
 
@@ -243,7 +243,7 @@ def main():
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                new_network_parameters = copy.deepcopy(network.parameters())
+                new_network_parameters = copy.deepcopy(list(network.parameters()))
 
                 for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
                     parameter.copy_(old_parameter + new_parameter.grad * config.epsilon)
