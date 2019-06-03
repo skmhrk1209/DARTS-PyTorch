@@ -40,12 +40,10 @@ class Dict(dict):
 def main():
 
     # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main_amp.py
-
     distributed.init_process_group(backend='nccl')
 
     with open(args.config) as file:
         config = Dict(json.load(file))
-
     config.update(vars(args))
     config.update(dict(
         world_size=distributed.get_world_size(),
@@ -228,7 +226,7 @@ def main():
                 val_images = val_images.cuda()
                 val_labels = val_labels.cuda()
 
-                old_network_parameters = copy.deepcopy(list(network.parameters()))
+                old_network_parameters = [parameter.clone() for parameter in network.parameters()]
 
                 network_optimizer.zero_grad()
 
@@ -245,7 +243,7 @@ def main():
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                new_network_parameters = copy.deepcopy(list(network.parameters()))
+                new_network_parameters = [parameter.clone() for parameter in network.parameters()]
                 norm = torch.norm(torch.cat([parameter.reshape(-1) for parameter in new_network_parameters]))
 
                 for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
