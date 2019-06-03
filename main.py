@@ -114,7 +114,8 @@ def main():
         num_nodes=6,
         num_cells=8,
         reduction_cells=[2, 5],
-        num_channels=16
+        num_channels=16,
+        num_classes=10
     ).cuda()
 
     network = model.network
