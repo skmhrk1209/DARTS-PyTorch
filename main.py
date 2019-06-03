@@ -135,11 +135,13 @@ def main():
         weight_decay=config.architecture_weight_decay
     )
 
+    '''
     model = nn.parallel.distributed.DistributedDataParallel(
         module=model,
         device_ids=[config.local_rank],
         output_device=config.local_rank
     )
+    '''
 
     last_epoch = -1
     global_step = 0
