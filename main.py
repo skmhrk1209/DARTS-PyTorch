@@ -137,7 +137,7 @@ def main():
         module=model,
         device_ids=[config.local_rank],
         output_device=config.local_rank,
-        #find_unused_parameters=True
+        find_unused_parameters=True # NOTE: What's this?
     )
 
     last_epoch = -1
@@ -226,8 +226,12 @@ def main():
                 val_images = val_images.cuda()
                 val_labels = val_labels.cuda()
 
-                old_network_parameters = [parameter.clone() for parameter in network.parameters()]
+                # `w` in the paper.
+                network_parameters = [parameter.clone() for parameter in network.parameters()]
 
+                # Approximate w*(α) by adapting w using only a single training step, 
+                # without solving the inner optimization completely by training until convergence.
+                # ----------------------------------------------------------------
                 network_optimizer.zero_grad()
 
                 train_logits = model(train_images)
@@ -235,7 +239,11 @@ def main():
                 train_loss.backward()
 
                 network_optimizer.step()
+                # ----------------------------------------------------------------
 
+                # Apply chain rule to the approximate architecture gradient.
+                # Backward validation loss, but don't update approximate parameter w'.
+                # ----------------------------------------------------------------
                 network_optimizer.zero_grad()
                 architecture_optimizer.zero_grad()
 
@@ -243,29 +251,44 @@ def main():
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                new_network_parameters = [parameter.clone() for parameter in network.parameters()]
-                new_network_gradients = [parameter.grad.clone() for parameter in network.parameters()]
+                network_gradients = [parameter.grad.clone() for parameter in network.parameters()]
+                gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in network_gradients]))
+                # ----------------------------------------------------------------
 
-                gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in new_network_gradients]))
-
-                for parameter, old_parameter, new_gradient in zip(network.parameters(), old_network_parameters, new_network_gradients):
-                    parameter.data.copy_(old_parameter + new_gradient * config.epsilon)
+                # Avoid calculate hessian-vector product using the finite difference approximation.
+                # ----------------------------------------------------------------
+                for parameter, parameter_, gradient in zip(network.parameters(), network_parameters, network_gradients):
+                    parameter.data.copy_(parameter_ + gradient * config.epsilon)
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * -(config.network_lr / (2 * config.epsilon / gradient_norm))
                 train_loss.backward()
 
-                for parameter, old_parameter, new_gradient in zip(network.parameters(), old_network_parameters, new_network_gradients):
-                    parameter.data.copy_(old_parameter - new_gradient * config.epsilon)
+                for parameter, parameter_, gradient in zip(network.parameters(), network_parameters, network_gradients):
+                    parameter.data.copy_(parameter_ - gradient * config.epsilon)
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * (config.network_lr / (2 * config.epsilon / gradient_norm))
                 train_loss.backward()
+                # ----------------------------------------------------------------
 
-                for parameter, new_parameter in zip(network.parameters(), new_network_parameters):
-                    parameter.data.copy_(new_parameter)
-
+                # Finally, update architecture parameter.
                 architecture_optimizer.step()
+
+                # Restore previous network parameter.
+                for parameter, parameter_ in zip(network.parameters(), network_parameters):
+                    parameter.data.copy_(parameter_)
+
+                # Update network parameter.
+                # ----------------------------------------------------------------
+                network_optimizer.zero_grad()
+
+                train_logits = model(train_images)
+                train_loss = criterion(train_logits, train_labels)
+                train_loss.backward()
+
+                network_optimizer.step()
+                # ----------------------------------------------------------------
 
                 val_predictions = torch.argmax(val_logits, dim=1)
                 val_accuracy = torch.mean((val_predictions == val_labels).float()) / config.world_size
