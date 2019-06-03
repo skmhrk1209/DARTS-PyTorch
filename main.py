@@ -226,7 +226,8 @@ def main():
                 val_images = val_images.cuda()
                 val_labels = val_labels.cuda()
 
-                old_network_parameters = [parameter.clone() for parameter in network.parameters()]
+                old_network_parameters, old_network_gradients = zip(
+                    *((parameter.clone(), parameter.grad.clone()) for parameter in network.parameters()))
 
                 network_optimizer.zero_grad()
 
@@ -236,41 +237,33 @@ def main():
 
                 network_optimizer.step()
 
-                for p in network.parameters():
-                    if p.grad is None:
-                        print("a")
-
                 network_optimizer.zero_grad()
                 architecture_optimizer.zero_grad()
-
-                for p in network.parameters():
-                    if p.grad is None:
-                        print("b")
 
                 val_logits = model(val_images)
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                for p in network.parameters():
-                    if p.grad is None:
-                        print("c")
+                new_network_parameters, new_network_gradients = zip(
+                    *((parameter.clone(), parameter.grad.clone()) for parameter in network.parameters()))
+                gradient_norm = torch.norm(torch.cat([parameter.grad.reshape(-1) for parameter in new_network_parameters]))
 
-                new_network_parameters = [parameter.clone() for parameter in network.parameters()]
-                norm = torch.norm(torch.cat([parameter.grad.reshape(-1) for parameter in new_network_parameters]))
-
-                for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
-                    parameter.copy_(old_parameter + new_parameter.grad * config.epsilon)
+                for parameter, old_parameter, new_gradient in zip(network.parameters(), old_network_parameters, new_network_gradients):
+                    parameter.copy_(old_parameter + new_gradient * config.epsilon)
 
                 train_logits = model(train_images)
-                train_loss = criterion(train_logits, train_labels) * -(config.lr / (2 * config.epsilon / norm))
+                train_loss = criterion(train_logits, train_labels) * -(config.lr / (2 * config.epsilon / gradient_norm))
                 train_loss.backward()
 
-                for parameter, old_parameter, new_parameter in zip(network.parameters(), old_network_parameters, new_network_parameters):
-                    parameter.copy_(old_parameter - new_parameter.grad * config.epsilon)
+                for parameter, old_parameter, new_gradient in zip(network.parameters(), old_network_parameters, new_network_gradients):
+                    parameter.copy_(old_parameter - new_gradient * config.epsilon)
 
                 train_logits = model(train_images)
-                train_loss = criterion(train_logits, train_labels) * +(config.lr / (2 * config.epsilon / norm))
+                train_loss = criterion(train_logits, train_labels) * +(config.lr / (2 * config.epsilon / gradient_norm))
                 train_loss.backward()
+
+                for parameter, new_parameter in zip(network.parameters(), new_network_parameters):
+                    parameter.copy_(old_parameter)
 
                 architecture_optimizer.step()
 
