@@ -241,14 +241,14 @@ def main():
                 summary_writer.add_figure(
                     tag="architecture/normal",
                     figure=figure,
-                    close=False
+                    
                 )
                 figure = model.module.draw_reduction_architecture()
                 print(figure is None)
                 summary_writer.add_figure(
                     tag="architecture/reduction",
                     figure=figure,
-                    close=False
+                    
                 )
 
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):

@@ -163,7 +163,7 @@ class DARTS(nn.Module):
         return figure
 
     def draw_normal_architecture(self):
-        self.draw_architecture(self.architecture.normal)
+        return self.draw_architecture(self.architecture.normal)
 
     def draw_reduction_architecture(self):
-        self.draw_architecture(self.architecture.reduction)
+        return self.draw_architecture(self.architecture.reduction)
