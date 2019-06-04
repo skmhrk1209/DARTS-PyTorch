@@ -9,7 +9,7 @@
     "architecture_beta1": 0.5,
     "architecture_beta2": 0.999,
     "architecture_weight_decay": 1e-3,
-    "local_batch_size": 64,
+    "local_batch_size": 32,
     "epsilon": 1e-2,
     "checkpoint_directory": "/content/gdrive/My Drive/DARTS/checkpoints",
     "event_directory": "/content/gdrive/My Drive/DARTS/events"
