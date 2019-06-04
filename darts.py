@@ -156,7 +156,7 @@ class DARTS(nn.Module):
                 operations = self.dag.edges[parent, child]['operations']
                 weights = nn.functional.softmax(self.architecture.reduction[str((parent, child))])
                 operations_weights.append(max(zip(operations, weights), key=itemgetter(1)))
-            else:
+            if operations_weights:
                 operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
                 dag.add_edge(parent, child, operations=operations)
         nx.draw(dag)
