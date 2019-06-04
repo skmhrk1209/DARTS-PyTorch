@@ -79,7 +79,7 @@ def main():
                 kernel_size=3,
                 padding=1,
                 affine=False
-            ), 'separable_conv2d_3x3'),
+            ), 'sep_conv_3x3'),
             Function(lambda in_channels, out_channels, stride: SeparableConv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
@@ -87,7 +87,7 @@ def main():
                 kernel_size=5,
                 padding=2,
                 affine=False
-            ), 'separable_conv2d_5x5'),
+            ), 'sep_conv_5x5'),
             Function(lambda in_channels, out_channels, stride: DilatedConv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
@@ -96,7 +96,7 @@ def main():
                 padding=2,
                 dilation=2,
                 affine=False
-            ), 'dilated_conv2d_3x3'),
+            ), 'dil_conv_3x3'),
             Function(lambda in_channels, out_channels, stride: DilatedConv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
@@ -105,17 +105,17 @@ def main():
                 padding=4,
                 dilation=2,
                 affine=False
-            ), 'dilated_conv2d_5x5'),
+            ), 'dil_conv_5x5'),
             Function(lambda in_channels, out_channels, stride: nn.AvgPool2d(
                 stride=stride,
                 kernel_size=3,
                 padding=1
-            ), 'avg_pool2d_3x3'),
+            ), 'avg_pool_3x3'),
             Function(lambda in_channels, out_channels, stride: nn.MaxPool2d(
                 stride=stride,
                 kernel_size=3,
                 padding=1
-            ), 'max_pool2d_3x3'),
+            ), 'max_pool_3x3'),
             Function(lambda in_channels, out_channels, stride: nn.Identity() if stride == 1 else Conv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
