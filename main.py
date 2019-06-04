@@ -70,9 +70,7 @@ def main():
         device_count=torch.cuda.device_count(),
         local_rank=distributed.get_rank() % torch.cuda.device_count()
     ))
-
-    if config.global_rank == 0:
-        print(f'config: {config}')
+    print(f'config: {config}')
 
     torch.manual_seed(0)
     torch.cuda.set_device(config.local_rank)
