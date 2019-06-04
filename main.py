@@ -121,14 +121,14 @@ def main():
                 kernel_size=3,
                 padding=1
             ), 'max_pool_3x3'),
-            Function(lambda in_channels, out_channels, stride: nn.Identity() if stride == 1 else Conv2d(
+            Function(lambda in_channels, out_channels, stride: Conv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
                 kernel_size=1,
                 padding=0,
                 affine=False
-            ), 'identity'),
+            ) if stride > 1 else nn.Identity(), 'identity'),
             Function(lambda in_channels, out_channels, stride: Zero(), 'zero')
         ],
         num_nodes=6,
@@ -345,7 +345,7 @@ def main():
                         global_step=global_step
                     )
                     print(f'[training] epoch: {epoch} global_step: {global_step} local_step: {local_step} '
-                          f'train_loss: {train_loss:.4f} train_accuracy: {train_accuracy:.4f}'
+                          f'train_loss: {train_loss:.4f} train_accuracy: {train_accuracy:.4f} '
                           f'val_loss: {val_loss:.4f} val_accuracy: {val_accuracy:.4f} [{step_end - step_begin:.4f}s]')
 
                 global_step += 1
