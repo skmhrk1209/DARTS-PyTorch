@@ -32,12 +32,19 @@ backends.cudnn.benchmark = True
 
 
 class Dict(dict):
-    def __getattr__(self, name): return self[name]
-    def __setattr__(self, name, value): self[name] = value
-    def __delattr__(self, name): del self[name]
+
+    def __getattr__(self, name):
+        return self[name]
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def __delattr__(self, name):
+        del self[name]
 
 
 class Function(object):
+
     def __init__(self, function, name):
         self.function = function
         self.name = name
@@ -66,6 +73,8 @@ def main():
 
     if config.global_rank == 0:
         print(f'config: {config}')
+
+    print(config)
 
     torch.manual_seed(0)
     torch.cuda.set_device(config.local_rank)
