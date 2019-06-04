@@ -231,9 +231,6 @@ def main():
             model.train()
             train_sampler.set_epoch(epoch)
 
-            model.module.draw_normal_architecture(f'normal_cell_{epoch}.png')
-            model.module.draw_reduction_architecture(f'reduction_cell_{epoch}.png')
-
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 
                 step_begin = time.time()
@@ -339,6 +336,9 @@ def main():
                 last_epoch=last_epoch,
                 global_step=global_step
             ), f'{config.checkpoint_directory}/epoch_{epoch}')
+
+            model.module.draw_normal_architecture(f'normal_cell_{epoch}.png')
+            model.module.draw_reduction_architecture(f'reduction_cell_{epoch}.png')
 
             lr_scheduler.step()
 
