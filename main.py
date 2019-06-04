@@ -236,13 +236,17 @@ def main():
 
             if config.global_rank == 0:
 
+                figure = model.module.draw_normal_architecture()
+                print(figure is None)
                 summary_writer.add_figure(
                     tag="architecture/normal",
-                    figure=model.module.draw_normal_architecture()
+                    figure=figure
                 )
+                figure = model.module.draw_reduction_architecture()
+                print(figure is None)
                 summary_writer.add_figure(
                     tag="architecture/reduction",
-                    figure=model.module.draw_reduction_architecture()
+                    figure=figure
                 )
 
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
