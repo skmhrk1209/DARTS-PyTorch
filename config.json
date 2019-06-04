@@ -1,7 +1,7 @@
 {
     "num_workers": 2,
     "num_epochs": 50,
-    "network_lr": 0.05,
+    "network_lr": 0.1,
     "network_lr_min": 0.001,
     "network_momentum": 0.9,
     "network_weight_decay": 3e-4,
