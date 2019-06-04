@@ -37,6 +37,18 @@ class Dict(dict):
     def __delattr__(self, name): del self[name]
 
 
+class Function(object):
+    def __init__(self, function, name):
+        self.function = function
+        self.name = name
+
+    def __call__(self, *args, **kwargs):
+        return self.function(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
 def main():
 
     # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main_amp.py
@@ -60,23 +72,23 @@ def main():
 
     model = DARTS(
         operations=[
-            lambda in_channels, out_channels, stride: SeparableConv2d(
+            Function(lambda in_channels, out_channels, stride: SeparableConv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
                 kernel_size=3,
                 padding=1,
                 affine=False
-            ),
-            lambda in_channels, out_channels, stride: SeparableConv2d(
+            ), 'separable_conv2d_3x3'),
+            Function(lambda in_channels, out_channels, stride: SeparableConv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
                 kernel_size=5,
                 padding=2,
                 affine=False
-            ),
-            lambda in_channels, out_channels, stride: DilatedConv2d(
+            ), 'separable_conv2d_5x5'),
+            Function(lambda in_channels, out_channels, stride: DilatedConv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
@@ -84,8 +96,8 @@ def main():
                 padding=2,
                 dilation=2,
                 affine=False
-            ),
-            lambda in_channels, out_channels, stride: DilatedConv2d(
+            ), 'dilated_conv2d_3x3'),
+            Function(lambda in_channels, out_channels, stride: DilatedConv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
@@ -93,26 +105,26 @@ def main():
                 padding=4,
                 dilation=2,
                 affine=False
-            ),
-            lambda in_channels, out_channels, stride: nn.AvgPool2d(
+            ), 'dilated_conv2d_5x5'),
+            Function(lambda in_channels, out_channels, stride: nn.AvgPool2d(
                 stride=stride,
                 kernel_size=3,
                 padding=1
-            ),
-            lambda in_channels, out_channels, stride: nn.MaxPool2d(
+            ), 'avg_pool2d_3x3'),
+            Function(lambda in_channels, out_channels, stride: nn.MaxPool2d(
                 stride=stride,
                 kernel_size=3,
                 padding=1
-            ),
-            lambda in_channels, out_channels, stride: nn.Identity() if stride == 1 else Conv2d(
+            ), 'max_pool2d_3x3'),
+            Function(lambda in_channels, out_channels, stride: nn.Identity() if stride == 1 else Conv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
                 kernel_size=1,
                 padding=0,
                 affine=False
-            ),
-            lambda in_channels, out_channels, stride: Zero()
+            ), 'identity'),
+            Function(lambda in_channels, out_channels, stride: Zero(), 'zero')
         ],
         num_nodes=6,
         num_cells=8,
@@ -168,7 +180,7 @@ def main():
         )
 
         train_dataset = datasets.CIFAR10(
-            root="cifar10",
+            root='cifar10',
             train=True,
             transform=transforms.Compose([
                 transforms.RandomCrop(32, padding=4),
@@ -182,7 +194,7 @@ def main():
             download=True
         )
         val_dataset = datasets.CIFAR10(
-            root="cifar10",
+            root='cifar10',
             train=False,
             transform=transforms.Compose([
                 transforms.ToTensor(),
@@ -218,6 +230,9 @@ def main():
 
             model.train()
             train_sampler.set_epoch(epoch)
+
+            model.module.draw_normal_architecture(f'normal_cell_{epoch}.png')
+            model.module.draw_reduction_architecture(f'reduction_cell_{epoch}.png')
 
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 
@@ -324,9 +339,6 @@ def main():
                 last_epoch=last_epoch,
                 global_step=global_step
             ), f'{config.checkpoint_directory}/epoch_{epoch}')
-
-            model.module.draw_normal_cell(f"normal_cell_{epoch}.png")
-            model.module.draw_reduction_cell(f"reduction_cell_{epoch}.png")
 
             lr_scheduler.step()
 

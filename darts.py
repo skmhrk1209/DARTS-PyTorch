@@ -70,13 +70,20 @@ class DARTS(nn.Module):
 
         for i in range(self.num_cells):
 
-            cell = nn.ModuleDict()
-
             reduction_output = False
             if i in self.reduction_cells:
                 reduction_output = True
                 out_channels <<= 1
 
+            cell = nn.ModuleDict({
+                str((parent, child)): nn.ModuleList([
+                    operation(
+                        in_channels=out_channels,
+                        out_channels=out_channels,
+                        stride=2 if reduction_output and parent in [0, 1] else 1
+                    ) for operation in attribute['operations']
+                ]) for parent, child, attribute in self.dag.edges(data=True)
+            })
             # NOTE: Should be factorized reduce?
             cell[str((-2, 0))] = Conv2d(
                 in_channels=in_channels_1st,
@@ -94,14 +101,6 @@ class DARTS(nn.Module):
                 padding=0,
                 affine=False
             )
-            for parent, child, attribute in self.dag.edges(data=True):
-                cell[str((parent, child))] = nn.ModuleList([
-                    operation(
-                        in_channels=out_channels,
-                        out_channels=out_channels,
-                        stride=2 if reduction_output and parent in [0, 1] else 1
-                    ) for operation in attribute['operations']
-                ])
 
             self.network.cells.append(cell)
 
@@ -134,30 +133,26 @@ class DARTS(nn.Module):
         output = self.network.linear(output)
         return output
 
-    def draw_normal_cell(self, path):
+    def draw_architecture(self, archirecture, path):
         dag = nx.DiGraph()
         for child in self.dag.nodes():
             operations_weights = []
             for parent in self.dag.predecessors(child):
                 operations = self.dag.edges[parent, child]['operations']
-                weights = nn.functional.softmax(self.architecture.normal[str((parent, child))])
+                weights = nn.functional.softmax(archirecture[str((parent, child))])
                 operations_weights.append(max(zip(operations, weights), key=itemgetter(1)))
             if operations_weights:
                 operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
                 dag.add_edge(parent, child, operations=operations)
-        nx.draw(dag)
+        edge_labels = {(parent, child): str(function) for parent, child, attribute in dag.edges(data=True)}
+        nx.draw_networkx_nodes(dag, pos)
+        nx.draw_networkx_labels(dag, pos)
+        nx.draw_networkx_edges(dag, pos)
+        nx.draw_networkx_edge_labels(dag, pos, edge_labels)
         plt.savefig(path)
 
-    def draw_reduction_cell(self, path):
-        dag = nx.DiGraph()
-        for child in self.dag.nodes():
-            operations_weights = []
-            for parent in self.dag.predecessors(child):
-                operations = self.dag.edges[parent, child]['operations']
-                weights = nn.functional.softmax(self.architecture.reduction[str((parent, child))])
-                operations_weights.append(max(zip(operations, weights), key=itemgetter(1)))
-            if operations_weights:
-                operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
-                dag.add_edge(parent, child, operations=operations)
-        nx.draw(dag)
-        plt.savefig(path)
+    def draw_normal_architecture(self, path):
+        self.draw_architecture(self.architecture.normal, path)
+
+    def draw_reduction_architecture(self, path):
+        self.draw_architecture(self.architecture.reduction, path)
