@@ -238,6 +238,8 @@ def main():
             model.train()
             train_sampler.set_epoch(epoch)
 
+            print("a")
+
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 
                 print("a")
