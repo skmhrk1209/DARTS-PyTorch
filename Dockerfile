@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu16.04
+FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
 ARG PYTHON_VERSION=3.6
 RUN apt-get update && apt-get install -y --no-install-recommends \
          build-essential \
