@@ -58,7 +58,7 @@ class Function(object):
 
 def main():
 
-    # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main_amp.py
+    # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main.py
     distributed.init_process_group(backend='nccl')
 
     with open(args.config) as file:
