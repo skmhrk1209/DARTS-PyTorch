@@ -153,13 +153,11 @@ class DARTS(nn.Module):
         }
 
         figure = plt.figure()
-        print(figure is None, "a")
         pos = nx.spring_layout(dag)
         nx.draw_networkx_nodes(dag, pos)
         nx.draw_networkx_labels(dag, pos)
         nx.draw_networkx_edges(dag, pos)
         nx.draw_networkx_edge_labels(dag, pos, edge_labels)
-        print(figure is None, "b")
         return figure
 
     def draw_normal_architecture(self):

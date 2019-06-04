@@ -234,23 +234,6 @@ def main():
             model.train()
             train_sampler.set_epoch(epoch)
 
-            if config.global_rank == 0:
-
-                figure = model.module.draw_normal_architecture()
-                print(figure is None)
-                summary_writer.add_figure(
-                    tag="architecture/normal",
-                    figure=figure,
-                    
-                )
-                figure = model.module.draw_reduction_architecture()
-                print(figure is None)
-                summary_writer.add_figure(
-                    tag="architecture/reduction",
-                    figure=figure,
-                    
-                )
-
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 
                 step_begin = time.time()
