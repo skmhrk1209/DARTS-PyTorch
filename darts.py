@@ -137,15 +137,14 @@ class DARTS(nn.Module):
 
         dag = nx.DiGraph()
         for child in self.dag.nodes():
-            operations = []
+            edges = []
             for parent in self.dag.predecessors(child):
                 operations = list(map(str, self.dag.edges[parent, child]['operations']))
                 weights = nn.functional.softmax(archirecture[str((parent, child))])
-                operations.append(((parent, child), max(zip(weights, operations))))
-            if operations:
-                print(operations)
-                operations = sorted(operations, key=itemgetter(1))[-2:]
-                for (parent, child), (weight, operation) in operations:
+                edges.append(((parent, child), max(zip(weights, operations))))
+            if edges:
+                edges = sorted(edges, key=itemgetter(1))[-2:]
+                for (parent, child), (weight, operation) in edges:
                     dag.add_edge(parent, child, operation=operation)
 
         pos = nx.spring_layout(dag)
