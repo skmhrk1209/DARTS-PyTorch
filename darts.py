@@ -152,13 +152,13 @@ class DARTS(nn.Module):
             for parent, child, attribute in dag.edges(data=True)
         }
 
-        plt.clf()
+        figure = plt.figure()
         pos = nx.spring_layout(dag)
         nx.draw_networkx_nodes(dag, pos)
         nx.draw_networkx_labels(dag, pos)
         nx.draw_networkx_edges(dag, pos)
         nx.draw_networkx_edge_labels(dag, pos, edge_labels)
-        return plt.gcf()
+        return figure
 
     def draw_normal_architecture(self):
         self.draw_architecture(self.architecture.normal)

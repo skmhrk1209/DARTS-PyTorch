@@ -234,6 +234,27 @@ def main():
             model.train()
             train_sampler.set_epoch(epoch)
 
+            if config.global_rank == 0:
+
+                torch.save(dict(
+                    model_state_dict=model.state_dict(),
+                    network_optimizer_state_dict=network_optimizer.state_dict(),
+                    architecture_optimizer_state_dict=architecture_optimizer.state_dict(),
+                    last_epoch=last_epoch,
+                    global_step=global_step
+                ), f'{config.checkpoint_directory}/epoch_{epoch}')
+
+                summary_writer.add_figure(
+                    tag="architecture/normal",
+                    figure=model.module.draw_normal_architecture(),
+                    global_step=global_step
+                )
+                summary_writer.add_figure(
+                    tag="architecture/reduction",
+                    figure=model.module.draw_reduction_architecture(),
+                    global_step=global_step
+                )
+
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 
                 step_begin = time.time()
