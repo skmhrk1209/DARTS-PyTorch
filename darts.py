@@ -126,7 +126,7 @@ class DARTS(nn.Module):
         output = self.network.conv(input)
         outputs = [output, output]
         for i, cell in enumerate(self.network.cells):
-            cell_outputs = {0: cell[-2, 0](outputs[-2]), 1: cell[-1, 1](outputs[-1])}
+            cell_outputs = {0: cell[str((-2, 0))](outputs[-2]), 1: cell[str((-1, 1))](outputs[-1])}
             self.forward_cell(cell, i in self.reduction_cells, self.num_nodes - 1, cell_outputs)
             outputs.append(torch.cat(list(cell_outputs.values())[2:], dim=1))
         output = outputs[-1]
