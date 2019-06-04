@@ -158,7 +158,6 @@ class DARTS(nn.Module):
         nx.draw_networkx_labels(dag, pos)
         nx.draw_networkx_edges(dag, pos)
         nx.draw_networkx_edge_labels(dag, pos, edge_labels)
-        print(figure is None)
         return figure
 
     def draw_normal_architecture(self):
