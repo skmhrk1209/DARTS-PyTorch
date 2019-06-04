@@ -144,7 +144,10 @@ class DARTS(nn.Module):
             if operations_weights:
                 operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
                 dag.add_edge(parent, child, operations=operations)
-        edge_labels = {(parent, child): list(map(str, attribute['operations'])) for parent, child, attribute in dag.edges(data=True)}
+        edge_labels = {
+            (parent, child): list(map(str, attribute['operations']))
+            for parent, child, attribute in dag.edges(data=True)
+        }
         pos = nx.spring_layout(dag)
         nx.draw_networkx_nodes(dag, pos)
         nx.draw_networkx_labels(dag, pos)
