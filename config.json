@@ -1,7 +1,7 @@
 {
     "num_workers": 1,
     "num_epochs": 50,
-    "network_lr": 0.1,
+    "network_lr": 0.025,
     "network_lr_min": 0.001,
     "network_momentum": 0.9,
     "network_weight_decay": 3e-4,
@@ -10,6 +10,7 @@
     "architecture_beta2": 0.999,
     "architecture_weight_decay": 1e-3,
     "local_batch_size": 64,
+    "global_batch_denom": 64,
     "epsilon": 1e-2,
     "checkpoint_directory": "checkpoints",
     "event_directory": "events"

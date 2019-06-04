@@ -147,6 +147,10 @@ def main():
 
     criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
 
+    config.global_batch_size = config.local_batch_size * config.world_size
+    config.network_lr = config.network_lr * config.global_batch_size / config.batch_denom
+    config.architecture_lr = config.architecture_lr * config.global_batch_size / config.batch_denom
+
     network_optimizer = torch.optim.SGD(
         params=model.module.network.parameters(),
         lr=config.network_lr,
