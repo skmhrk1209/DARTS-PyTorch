@@ -74,8 +74,6 @@ def main():
     if config.global_rank == 0:
         print(f'config: {config}')
 
-    print(config)
-
     torch.manual_seed(0)
     torch.cuda.set_device(config.local_rank)
 
