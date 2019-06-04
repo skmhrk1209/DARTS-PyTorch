@@ -231,8 +231,6 @@ def main():
             pin_memory=True
         )
 
-        training_begin = time.time()
-
         for epoch in range(last_epoch + 1, config.num_epochs):
 
             model.train()
@@ -312,46 +310,70 @@ def main():
                 network_optimizer.step()
                 # ----------------------------------------------------------------
 
-                val_predictions = torch.argmax(val_logits, dim=1)
-                val_accuracy = torch.mean((val_predictions == val_labels).float()) / config.world_size
+                train_predictions = torch.argmax(train_logits, dim=1)
+                train_accuracy = torch.mean((train_predictions == train_labels).float())
 
+                val_predictions = torch.argmax(val_logits, dim=1)
+                val_accuracy = torch.mean((val_predictions == val_labels).float())
+
+                distributed.all_reduce(train_loss)
                 distributed.all_reduce(val_loss)
+
+                distributed.all_reduce(train_accuracy)
                 distributed.all_reduce(val_accuracy)
+
+                train_loss = train_loss / config.world_size
+                val_loss = val_loss / config.world_size
+                train_accuracy = train_accuracy / config.world_size
+                val_accuracy = val_accuracy / config.world_size
 
                 step_end = time.time()
 
                 if config.global_rank == 0:
                     summary_writer.add_scalars(
                         main_tag='loss',
-                        tag_scalar_dict=dict(val=val_loss),
+                        tag_scalar_dict=dict(
+                            train=train_loss,
+                            val=val_loss
+                        ),
                         global_step=global_step
                     )
                     summary_writer.add_scalars(
                         main_tag='accuracy',
-                        tag_scalar_dict=dict(val=val_accuracy),
+                        tag_scalar_dict=dict(
+                            train=train_accuracy,
+                            val=val_accuracy
+                        ),
                         global_step=global_step
                     )
                     print(f'[training] epoch: {epoch} global_step: {global_step} local_step: {local_step} '
+                          f'train_loss: {train_loss:.4f} train_accuracy: {train_accuracy:.4f}'
                           f'val_loss: {val_loss:.4f} val_accuracy: {val_accuracy:.4f} [{step_end - step_begin:.4f}s]')
 
                 global_step += 1
 
-            torch.save(dict(
-                model_state_dict=model.state_dict(),
-                network_optimizer_state_dict=network_optimizer.state_dict(),
-                architecture_optimizer_state_dict=architecture_optimizer.state_dict(),
-                last_epoch=last_epoch,
-                global_step=global_step
-            ), f'{config.checkpoint_directory}/epoch_{epoch}')
+            if config.global_rank == 0:
 
-            model.module.draw_normal_architecture(f'normal_cell_{epoch}.png')
-            model.module.draw_reduction_architecture(f'reduction_cell_{epoch}.png')
+                torch.save(dict(
+                    model_state_dict=model.state_dict(),
+                    network_optimizer_state_dict=network_optimizer.state_dict(),
+                    architecture_optimizer_state_dict=architecture_optimizer.state_dict(),
+                    last_epoch=last_epoch,
+                    global_step=global_step
+                ), f'{config.checkpoint_directory}/epoch_{epoch}')
+
+                summary_writer.add_figure(
+                    tag="architecture/normal",
+                    figure=model.module.draw_normal_architecture(),
+                    global_step=global_step
+                )
+                summary_writer.add_figure(
+                    tag="architecture/reduction",
+                    figure=model.module.draw_reduction_architecture(),
+                    global_step=global_step
+                )
 
             lr_scheduler.step()
-
-        training_end = time.time()
-        if config.global_rank == 0:
-            print(f'training finished [{training_end - training_begin:.4f}s]')
 
     if config.global_rank == 0:
         summary_writer.close()

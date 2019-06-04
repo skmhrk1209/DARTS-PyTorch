@@ -133,7 +133,7 @@ class DARTS(nn.Module):
         output = self.network.linear(output)
         return output
 
-    def draw_architecture(self, archirecture, path):
+    def draw_architecture(self, archirecture):
 
         dag = nx.DiGraph()
         for child in self.dag.nodes():
@@ -152,15 +152,16 @@ class DARTS(nn.Module):
             for parent, child, attribute in dag.edges(data=True)
         }
 
+        plt.clf()
         pos = nx.spring_layout(dag)
         nx.draw_networkx_nodes(dag, pos)
         nx.draw_networkx_labels(dag, pos)
         nx.draw_networkx_edges(dag, pos)
         nx.draw_networkx_edge_labels(dag, pos, edge_labels)
-        plt.savefig(path)
+        return plt.gcf()
 
-    def draw_normal_architecture(self, path):
-        self.draw_architecture(self.architecture.normal, path)
+    def draw_normal_architecture(self):
+        self.draw_architecture(self.architecture.normal)
 
-    def draw_reduction_architecture(self, path):
-        self.draw_architecture(self.architecture.reduction, path)
+    def draw_reduction_architecture(self):
+        self.draw_architecture(self.architecture.reduction)
