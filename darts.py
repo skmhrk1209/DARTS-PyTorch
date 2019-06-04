@@ -134,7 +134,7 @@ class DARTS(nn.Module):
         output = self.network.linear(output)
         return output
 
-    def draw_reduction_cell(self, path):
+    def draw_normal_cell(self, path):
         dag = nx.DiGraph()
         for child in self.dag.nodes():
             operations_weights = []
