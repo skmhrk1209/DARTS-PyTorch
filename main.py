@@ -8,7 +8,6 @@ from torch import autograd
 from torchvision import datasets
 from torchvision import transforms
 from torchvision import models
-from tensorboardX import SummaryWriter
 from darts import *
 from ops import *
 import numpy as np
@@ -168,7 +167,7 @@ def main():
     if config.global_rank == 0:
         os.makedirs(config.checkpoint_directory, exist_ok=True)
         os.makedirs(config.event_directory, exist_ok=True)
-        summary_writer = SummaryWriter(config.event_directory)
+        summary_writer = utils.tensorboard.SummaryWriter(config.event_directory)
 
     if config.training:
 
