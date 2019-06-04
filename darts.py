@@ -136,23 +136,20 @@ class DARTS(nn.Module):
     def draw_architecture(self, archirecture, path):
         dag = nx.DiGraph()
         for child in self.dag.nodes():
-            operations_weights = []
+            operations = []
             for parent in self.dag.predecessors(child):
                 operations = self.dag.edges[parent, child]['operations']
                 weights = nn.functional.softmax(archirecture[str((parent, child))])
-                operations_weights.append(max(zip(operations, weights), key=itemgetter(1)))
-            if operations_weights:
-                operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
-                dag.add_edge(parent, child, operations=operations)
-        edge_labels = {
-            (parent, child): list(map(str, attribute['operations']))
-            for parent, child, attribute in dag.edges(data=True)
-        }
+                operations.append(((parent, child), max(zip(weights, operations))))
+            if operations:
+                operations = sorted(operations, key=itemgetter(1))[-2:]
+                for (parent, child), (weight, operation) in operations:
+                    dag.add_edge(parent, child, operation=str(operation))
         pos = nx.spring_layout(dag)
         nx.draw_networkx_nodes(dag, pos)
         nx.draw_networkx_labels(dag, pos)
         nx.draw_networkx_edges(dag, pos)
-        nx.draw_networkx_edge_labels(dag, pos, edge_labels)
+        nx.draw_networkx_edge_labels(dag, pos)
         plt.savefig(path)
 
     def draw_normal_architecture(self, path):
