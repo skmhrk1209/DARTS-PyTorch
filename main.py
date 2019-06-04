@@ -240,6 +240,8 @@ def main():
 
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 
+                print("a")
+
                 step_begin = time.time()
 
                 train_images = train_images.cuda()
