@@ -4,7 +4,7 @@ from torch import nn
 
 class Conv2d(nn.Module):
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, preactivation=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, affine, preactivation=True):
         super().__init__()
         self.conv_block = nn.Sequential(
             nn.ReLU() if preactivation else nn.Identity(),
@@ -16,7 +16,10 @@ class Conv2d(nn.Module):
                 padding=padding,
                 bias=False
             ),
-            nn.BatchNorm2d(out_channels)
+            nn.BatchNorm2d(
+                num_features=out_channels,
+                affine=affine
+            )
         )
 
     def forward(self, input):
@@ -25,7 +28,7 @@ class Conv2d(nn.Module):
 
 class DilatedConv2d(nn.Module):
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation, preactivation=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation, affine, preactivation=True):
 
         super().__init__()
 
@@ -47,7 +50,10 @@ class DilatedConv2d(nn.Module):
                 kernel_size=1,
                 bias=False
             ),
-            nn.BatchNorm2d(out_channels)
+            nn.BatchNorm2d(
+                num_features=out_channels,
+                affine=affine
+            )
         )
 
     def forward(self, input):
@@ -56,7 +62,7 @@ class DilatedConv2d(nn.Module):
 
 class SeparableConv2d(nn.Module):
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, preactivation=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, affine, preactivation=True):
 
         super().__init__()
 
@@ -77,7 +83,10 @@ class SeparableConv2d(nn.Module):
                 kernel_size=1,
                 bias=False
             ),
-            nn.BatchNorm2d(in_channels),
+            nn.BatchNorm2d(
+                num_features=in_channels,
+                affine=affine
+            ),
             nn.ReLU(),
             nn.Conv2d(
                 in_channels=in_channels,
@@ -94,7 +103,10 @@ class SeparableConv2d(nn.Module):
                 kernel_size=1,
                 bias=False
             ),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(
+                num_features=out_channels,
+                affine=affine
+            )
         )
 
     def forward(self, input):

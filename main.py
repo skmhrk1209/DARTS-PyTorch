@@ -65,14 +65,16 @@ def main():
                 out_channels=out_channels,
                 stride=stride,
                 kernel_size=3,
-                padding=1
+                padding=1,
+                affine=False
             ),
             lambda in_channels, out_channels, stride: SeparableConv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
                 kernel_size=5,
-                padding=2
+                padding=2,
+                affine=False
             ),
             lambda in_channels, out_channels, stride: DilatedConv2d(
                 in_channels=in_channels,
@@ -80,7 +82,8 @@ def main():
                 stride=stride,
                 kernel_size=3,
                 padding=2,
-                dilation=2
+                dilation=2,
+                affine=False
             ),
             lambda in_channels, out_channels, stride: DilatedConv2d(
                 in_channels=in_channels,
@@ -88,7 +91,8 @@ def main():
                 stride=stride,
                 kernel_size=5,
                 padding=4,
-                dilation=2
+                dilation=2,
+                affine=False
             ),
             lambda in_channels, out_channels, stride: nn.AvgPool2d(
                 stride=stride,
@@ -105,7 +109,8 @@ def main():
                 out_channels=out_channels,
                 stride=stride,
                 kernel_size=1,
-                padding=0
+                padding=0,
+                affine=False
             ),
             lambda in_channels, out_channels, stride: Zero()
         ],
@@ -116,28 +121,26 @@ def main():
         num_classes=10
     ).cuda()
 
-    network = model.network
-    architecture = model.architecture
+    model = nn.parallel.distributed.DistributedDataParallel(
+        module=model,
+        device_ids=[config.local_rank],
+        output_device=config.local_rank,
+        find_unused_parameters=True  # NOTE: What's this?
+    )
 
     criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
+
     network_optimizer = torch.optim.SGD(
-        params=network.parameters(),
+        params=model.module.network.parameters(),
         lr=config.network_lr,
         momentum=config.network_momentum,
         weight_decay=config.network_weight_decay
     )
     architecture_optimizer = torch.optim.Adam(
-        params=architecture.parameters(),
+        params=model.module.architecture.parameters(),
         lr=config.architecture_lr,
         betas=(config.architecture_beta1, config.architecture_beta2),
         weight_decay=config.architecture_weight_decay
-    )
-
-    model = nn.parallel.distributed.DistributedDataParallel(
-        module=model,
-        device_ids=[config.local_rank],
-        output_device=config.local_rank,
-        find_unused_parameters=True # NOTE: What's this?
     )
 
     last_epoch = -1
@@ -216,6 +219,9 @@ def main():
             model.train()
             train_sampler.set_epoch(epoch)
 
+            model.module.draw_normal_cell(f"normal_cell_{epoch}.png")
+            model.module.draw_reduction_cell(f"reduction_cell_{epoch}.png")
+
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 
                 step_begin = time.time()
@@ -227,9 +233,9 @@ def main():
                 val_labels = val_labels.cuda()
 
                 # `w` in the paper.
-                network_parameters = [parameter.clone() for parameter in network.parameters()]
+                network_parameters = [parameter.clone() for parameter in model.module.network.parameters()]
 
-                # Approximate w*(α) by adapting w using only a single training step, 
+                # Approximate w*(α) by adapting w using only a single training step,
                 # without solving the inner optimization completely by training until convergence.
                 # ----------------------------------------------------------------
                 network_optimizer.zero_grad()
@@ -251,20 +257,20 @@ def main():
                 val_loss = criterion(val_logits, val_labels)
                 val_loss.backward()
 
-                network_gradients = [parameter.grad.clone() for parameter in network.parameters()]
+                network_gradients = [parameter.grad.clone() for parameter in model.module.network.parameters()]
                 gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in network_gradients]))
                 # ----------------------------------------------------------------
 
                 # Avoid calculate hessian-vector product using the finite difference approximation.
                 # ----------------------------------------------------------------
-                for parameter, parameter_, gradient in zip(network.parameters(), network_parameters, network_gradients):
+                for parameter, parameter_, gradient in zip(model.module.network.parameters(), network_parameters, network_gradients):
                     parameter.data.copy_(parameter_ + gradient * config.epsilon)
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * -(config.network_lr / (2 * config.epsilon / gradient_norm))
                 train_loss.backward()
 
-                for parameter, parameter_, gradient in zip(network.parameters(), network_parameters, network_gradients):
+                for parameter, parameter_, gradient in zip(model.module.network.parameters(), network_parameters, network_gradients):
                     parameter.data.copy_(parameter_ - gradient * config.epsilon)
 
                 train_logits = model(train_images)
@@ -276,7 +282,7 @@ def main():
                 architecture_optimizer.step()
 
                 # Restore previous network parameter.
-                for parameter, parameter_ in zip(network.parameters(), network_parameters):
+                for parameter, parameter_ in zip(model.module.network.parameters(), network_parameters):
                     parameter.data.copy_(parameter_)
 
                 # Update network parameter.
