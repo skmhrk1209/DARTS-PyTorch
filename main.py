@@ -17,7 +17,7 @@ import json
 import time
 import os
 
-parser = argparse.ArgumentParser(description='ResNet50 training on Imagenet')
+parser = argparse.ArgumentParser(description='DARTS: Differentiable Architecture Search')
 parser.add_argument('--config', type=str, default='config.json')
 parser.add_argument('--checkpoint', type=str, default='')
 parser.add_argument('--training', action='store_true')
