@@ -1,5 +1,5 @@
 {
-    "num_workers": 4,
+    "num_workers": 2,
     "num_epochs": 50,
     "network_lr": 0.025,
     "network_lr_min": 0.001,
