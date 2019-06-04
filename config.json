@@ -11,6 +11,6 @@
     "architecture_weight_decay": 1e-3,
     "local_batch_size": 64,
     "epsilon": 1e-2,
-    "checkpoint_directory": "/content/gdrive/DARTS/checkpoints",
-    "event_directory": "/content/gdrive/DARTS/events"
+    "checkpoint_directory": "/content/gdrive/My Drive/DARTS/checkpoints",
+    "event_directory": "/content/gdrive/My Drive/DARTS/events"
 }
