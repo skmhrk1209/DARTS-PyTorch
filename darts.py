@@ -134,7 +134,7 @@ class DARTS(nn.Module):
         output = self.network.linear(output)
         return output
 
-    def draw_normal_cell(self, path):
+    def draw_reduction_cell(self, path):
         dag = nx.DiGraph()
         for child in self.dag.nodes():
             operations_weights = []
@@ -142,8 +142,9 @@ class DARTS(nn.Module):
                 operations = self.dag.edges[parent, child]['operations']
                 weights = nn.functional.softmax(self.architecture.normal[str((parent, child))])
                 operations_weights.append(max(zip(operations, weights), key=itemgetter(1)))
-            operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
-            dag.add_edge(parent, child, operations=operations)
+            else:
+                operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
+                dag.add_edge(parent, child, operations=operations)
         nx.draw(dag)
         plt.savefig(path)
 
@@ -155,7 +156,8 @@ class DARTS(nn.Module):
                 operations = self.dag.edges[parent, child]['operations']
                 weights = nn.functional.softmax(self.architecture.reduction[str((parent, child))])
                 operations_weights.append(max(zip(operations, weights), key=itemgetter(1)))
-            operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
-            dag.add_edge(parent, child, operations=operations)
+            else:
+                operations, weights = zip(*sorted(operations_weights, key=itemgetter(1)))
+                dag.add_edge(parent, child, operations=operations)
         nx.draw(dag)
         plt.savefig(path)
