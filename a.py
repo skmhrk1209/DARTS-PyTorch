@@ -94,7 +94,7 @@ def main():
     distributed.all_reduce(m.p.grad)
     print(m.p.grad)
 
-    m.p.copy_(m.p.grad)
+    m.p.data.copy_(m.p.grad)
     distributed.all_reduce(m.p)
     print(m.p.grad)
 
