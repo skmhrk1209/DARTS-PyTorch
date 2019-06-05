@@ -281,9 +281,10 @@ def main():
 
                 def f(module):
                     if not module.children():
+                        print(module)
                         for p in module.parameters():
                             if p.grad is None:
-                                print(module)
+                                print(module, '<-----------')
                 model.network.apply(f)
 
                 average_gradients(model.network.parameters())
