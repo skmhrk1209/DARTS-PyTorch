@@ -258,7 +258,7 @@ def main():
                     scaled_train_loss.backward()
 
                 def f(module):
-                    if isinstance(module, (DilatedConv2d, SeparableConv2d, Conv2d, AvgPool2d, MaxPool2d, Zero)):
+                    if isinstance(module, (Conv2d)):
                         for p in module.parameters():
                             if p.grad is None:
                                 print(module)
