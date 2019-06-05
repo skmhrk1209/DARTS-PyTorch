@@ -69,14 +69,14 @@ class DARTS(nn.Module):
         """Build modules that represent the whole network.
         """
         self.network = nn.ModuleDict()
-        num_channels = self.num_channels
 
         # NOTE: Why multiplier is 3?
-        multiplier = 3
+        num_channels = self.num_channels
+        out_channels = num_channels * 3
 
         self.network.conv = Conv2d(
             in_channels=3,
-            out_channels=num_channels * multiplier,
+            out_channels=out_channels,
             stride=1,
             kernel_size=3,
             padding=1,
@@ -84,8 +84,8 @@ class DARTS(nn.Module):
             preactivation=False
         )
 
+        out_channels = [out_channels] * self.num_input_nodes
         self.network.cells = nn.ModuleList()
-        out_channels = [num_channels * multiplier] * self.num_input_nodes
 
         for i in range(self.num_cells):
 
@@ -117,8 +117,8 @@ class DARTS(nn.Module):
                 }
             })
 
-            self.network.cells.append(cell)
             out_channels.append(num_channels * (self.num_nodes - self.num_input_nodes))
+            self.network.cells.append(cell)
 
         self.network.global_avg_pool2d = nn.AdaptiveAvgPool2d(1)
         self.network.linear = nn.Linear(out_channels[-1], self.num_classes, bias=True)
