@@ -149,13 +149,13 @@ def main():
     config.architecture_lr = config.architecture_lr * config.global_batch_size / config.global_batch_denom
 
     network_optimizer = torch.optim.SGD(
-        params=model.module.network.parameters(),
+        params=model.network.parameters(),
         lr=config.network_lr,
         momentum=config.network_momentum,
         weight_decay=config.network_weight_decay
     )
     architecture_optimizer = torch.optim.Adam(
-        params=model.module.architecture.parameters(),
+        params=model.architecture.parameters(),
         lr=config.architecture_lr,
         betas=(config.architecture_beta1, config.architecture_beta2),
         weight_decay=config.architecture_weight_decay
@@ -267,7 +267,7 @@ def main():
                 val_labels = val_labels.cuda()
 
                 # `w` in the paper.
-                network_parameters = [parameter.clone().detach() for parameter in model.module.network.parameters()]
+                network_parameters = [parameter.clone().detach() for parameter in model.network.parameters()]
 
                 # Approximate w*(α) by adapting w using only a single training step,
                 # without solving the inner optimization completely by training until convergence.
@@ -279,7 +279,7 @@ def main():
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
 
-                average_gradients(model.module.network.parameters())
+                average_gradients(model.network.parameters())
                 network_optimizer.step()
                 # ----------------------------------------------------------------
 
@@ -294,13 +294,13 @@ def main():
                 with amp.scale_loss(val_loss, [network_optimizer, architecture_optimizer]) as scaled_val_loss:
                     scaled_val_loss.backward()
 
-                network_gradients = [parameter.grad.clone().detach() for parameter in model.module.network.parameters()]
+                network_gradients = [parameter.grad.clone().detach() for parameter in model.network.parameters()]
                 gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in network_gradients]))
                 # ----------------------------------------------------------------
 
                 # Avoid calculate hessian-vector product using the finite difference approximation.
                 # ----------------------------------------------------------------
-                for parameter, parameter_, gradient in zip(model.module.network.parameters(), network_parameters, network_gradients):
+                for parameter, parameter_, gradient in zip(model.network.parameters(), network_parameters, network_gradients):
                     parameter.data = (parameter_ + gradient * config.epsilon).data
 
                 train_logits = model(train_images)
@@ -308,7 +308,7 @@ def main():
                 with amp.scale_loss(train_loss, architecture_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
 
-                for parameter, parameter_, gradient in zip(model.module.network.parameters(), network_parameters, network_gradients):
+                for parameter, parameter_, gradient in zip(model.network.parameters(), network_parameters, network_gradients):
                     parameter.data = (parameter_ - gradient * config.epsilon).data
 
                 train_logits = model(train_images)
@@ -318,11 +318,11 @@ def main():
                 # ----------------------------------------------------------------
 
                 # Finally, update architecture parameter.
-                average_gradients(model.module.architecture.parameters())
+                average_gradients(model.architecture.parameters())
                 architecture_optimizer.step()
 
                 # Restore previous network parameter.
-                for parameter, parameter_ in zip(model.module.network.parameters(), network_parameters):
+                for parameter, parameter_ in zip(model.network.parameters(), network_parameters):
                     parameter.data = parameter_.data
 
                 # Update network parameter.
@@ -334,7 +334,7 @@ def main():
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
 
-                average_gradients(model.module.network.parameters())
+                average_gradients(model.network.parameters())
                 network_optimizer.step()
                 # ----------------------------------------------------------------
 
@@ -383,7 +383,7 @@ def main():
 
                 summary_writer.add_image(
                     tag="architecture/normal",
-                    img_tensor=skimage.io.imread(model.module.draw_normal_architecture(
+                    img_tensor=skimage.io.imread(model.draw_normal_architecture(
                         num_operations=2,
                         name=f'normal_cell_{epoch}',
                         directory=config.architecture_directory
@@ -393,7 +393,7 @@ def main():
                 )
                 summary_writer.add_image(
                     tag="architecture/reduction",
-                    img_tensor=skimage.io.imread(model.module.draw_reduction_architecture(
+                    img_tensor=skimage.io.imread(model.draw_reduction_architecture(
                         num_operations=2,
                         name=f'reduction_cell_{epoch}',
                         directory=config.architecture_directory
