@@ -265,6 +265,7 @@ def main():
                                     if p.grad is None:
                                         if config.global_rank == 0:
                                             print("xxxxxxx", (e, m))
+                                            break
                                 
                 
                 distributed.barrier()
