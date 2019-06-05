@@ -101,7 +101,7 @@ def main():
                 padding=1
             ),
             functools.partial(
-                nn.MaxPool2d,
+                MaxPool2d,
                 kernel_size=3,
                 padding=1
             ),
