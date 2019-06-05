@@ -281,7 +281,7 @@ def main():
 
                 for cell in model.network.cells:
                     for key, module in cell:
-                        if p in module.parameters():
+                        for p in module.parameters():
                             if p.grad is None:
                                 print(key, module)
 
