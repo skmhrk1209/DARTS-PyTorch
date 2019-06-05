@@ -79,7 +79,7 @@ def main():
     torch.manual_seed(0)
     torch.cuda.set_device(config.local_rank)
 
-    input = nn.Parameter(torch.ones(10))
+    input = nn.Parameter(torch.ones(1))
     output = input ** 2
 
     output.backward()
