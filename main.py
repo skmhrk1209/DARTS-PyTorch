@@ -258,11 +258,11 @@ def main():
                     scaled_train_loss.backward()
 
                 def f(module):
-                    if not module.children():
-                        print(module)
+                    if isinstance(module, (DilatedConv2d, SeparableConv2d, Conv2d, AvgPool2d, MaxPool2d, Zero)):
                         for p in module.parameters():
                             if p.grad is None:
-                                print(module, '<-----------')
+                                print(module)
+                                break
                 model.network.apply(f)
 
                 average_gradients(model.network.parameters())
