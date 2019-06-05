@@ -264,7 +264,7 @@ def main():
                                 for p in m.parameters():
                                     if p.grad is None:
                                         if config.global_rank == 0:
-                                            print("xxxxxxx", (e, m))
+                                            print("xxxxxxx", (e, m, p.shape))
                                             break
                                 
                 
