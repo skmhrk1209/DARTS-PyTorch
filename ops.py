@@ -148,4 +148,4 @@ class Zero(nn.Module):
         super().__init__()
 
     def forward(self, input):
-        return 0.0
+        return input * 0.0
