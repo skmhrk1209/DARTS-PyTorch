@@ -134,6 +134,7 @@ class DARTS(nn.Module):
                 This is to avoid duplicate calculation in recursion.
 
         """
+        print(child)
         architecture = self.architecture.reduction if reduction else self.architecture.normal
         if self.dag.predecessors(child):
             if child not in node_outputs:
