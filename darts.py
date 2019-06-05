@@ -134,9 +134,9 @@ class DARTS(nn.Module):
         output = self.network.linear(output)
         return output
 
-    def draw_architecture(self, archirecture, num_operations, filename):
+    def draw_architecture(self, archirecture, num_operations, name):
 
-        dag = gv.Digraph()
+        dag = gv.Digraph(name)
         for child in self.dag.nodes():
             edges = []
             for parent in self.dag.predecessors(child):
@@ -147,10 +147,10 @@ class DARTS(nn.Module):
                 edges = sorted(edges, key=itemgetter(1))[-num_operations:]
                 for (parent, child), (weight, operation) in edges:
                     dag.edge(parent, child, label=operation)
-        return dag.render(filename=filename, format='png')
+        return dag.render(format='png')
 
-    def draw_normal_architecture(self, num_operations, filename):
-        return self.draw_architecture(self.architecture.normal, num_operations, filename)
+    def draw_normal_architecture(self, num_operations, name):
+        return self.draw_architecture(self.architecture.normal, num_operations, name)
 
-    def draw_reduction_architecture(self, num_operations, filename):
-        return self.draw_architecture(self.architecture.reduction, num_operations, filename)
+    def draw_reduction_architecture(self, num_operations, name):
+        return self.draw_architecture(self.architecture.reduction, num_operations, name)

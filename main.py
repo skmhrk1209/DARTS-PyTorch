@@ -245,7 +245,7 @@ def main():
                     tag="architecture/normal",
                     img_tensor=skimage.io.imread(model.module.draw_normal_architecture(
                         num_operations=2,
-                        filename=f'normal_cell_{epoch}.gv'
+                        name=f'normal_cell_{epoch}.gv'
                     )),
                     global_step=global_step,
                     dataformats='HWC'
@@ -254,7 +254,7 @@ def main():
                     tag="architecture/reduction",
                     img_tensor=skimage.io.imread(model.module.draw_reduction_architecture(
                         num_operations=2,
-                        filename=f'reduction_cell_{epoch}.gv'
+                        name=f'reduction_cell_{epoch}.gv'
                     )),
                     global_step=global_step,
                     dataformats='HWC'
