@@ -279,12 +279,13 @@ def main():
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
 
-                def f(module):
-                    if not module.children():
-                        for p in module.parameters():
-                            if p.grad is None:
-                                print(module)
-                model.network.apply(f)
+                if config.global_rank == 0:
+                    def f(module):
+                        if not module.children():
+                            for p in module.parameters():
+                                if p.grad is None:
+                                    print(module)
+                    model.network.apply(f)
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
