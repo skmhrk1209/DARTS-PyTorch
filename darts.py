@@ -8,9 +8,26 @@ import matplotlib.pyplot as plt
 
 
 class DARTS(nn.Module):
+    """Differentiable architecture search module.
+
+    Based on the following papers.
+    1. [DARTS: Differentiable Architecture Search](https://arxiv.org/pdf/1806.09055.pdf)
+    2. ...
+
+    """
 
     def __init__(self, operations, num_nodes, num_cells, reduction_cells, num_channels, num_classes):
+        """Build DARTS with the given operations.
 
+        Args:
+            operations (list): List of nn.Module initializer that takes in_channels, out_channels, stride as arguments.
+            num_nodes (int): Number of nodes in each cell.
+            num_cells (int): Number of cells in the network.
+            reduction_cells (list): List of cell index that performs spatial reduction.
+            num_channels (int): Number of channels of the first cell.
+            num_classes (int): Number of classes for classification.
+
+        """
         super().__init__()
 
         self.operations = operations
@@ -25,8 +42,8 @@ class DARTS(nn.Module):
         self.build_network()
 
     def build_dag(self):
-        ''' Build Directed Acyclic Graph that represents cell.
-        '''
+        """Build Directed Acyclic Graph that represents each cell.
+        """
         self.dag = nx.DiGraph()
         for parent in range(self.num_nodes):
             for child in range(self.num_nodes):
@@ -34,8 +51,8 @@ class DARTS(nn.Module):
                     self.dag.add_edge(parent, child)
 
     def build_architecture(self):
-        ''' Build parameter that represents cell architecture.
-        '''
+        """Build parameters that represent the cell architectures (normal and reduction).
+        """
         self.architecture = nn.ParameterDict()
         self.architecture.normal = nn.ParameterDict({
             str((parent, child)): nn.Parameter(torch.zeros(len(self.operations)))
@@ -47,8 +64,8 @@ class DARTS(nn.Module):
         })
 
     def build_network(self):
-        ''' Build module that represents cell network.
-        '''
+        """Build modules that represent the whole network.
+        """
         self.network = nn.ModuleDict()
 
         self.network.conv = Conv2d(
@@ -112,15 +129,25 @@ class DARTS(nn.Module):
         self.network.global_avg_pool2d = nn.AdaptiveAvgPool2d(1)
         self.network.linear = nn.Linear(in_channels_2nd, self.num_classes, bias=True)
 
-    def forward_cell(self, cell, reduction, child, cell_outputs):
+    def forward_cell(self, cell, reduction, child, node_outputs):
+        """forward in the given cell.
+
+        Args:
+            cell (dict): A dict with edges as keys and operations as values.
+            reduction (bool): Whether the cell performs spatial reduction.
+            child (int): The output node in the cell.
+            node_outputs (dict): A dict with node as keys and its outputs as values.
+                This is to avoid duplicate calculation in recursion.
+
+        """
         architecture = self.architecture.reduction if reduction else self.architecture.normal
         if self.dag.predecessors(child):
-            if child not in cell_outputs:
-                cell_outputs[child] = sum(sum(
-                    operation(self.forward_cell(cell, reduction, parent, cell_outputs)) * weight
+            if child not in node_outputs:
+                node_outputs[child] = sum(sum(
+                    operation(self.forward_cell(cell, reduction, parent, node_outputs)) * weight
                     for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))]))
                 ) for parent in self.dag.predecessors(child))
-        return cell_outputs[child]
+        return node_outputs[child]
 
     def forward(self, input):
         output = self.network.conv(input)
@@ -135,6 +162,14 @@ class DARTS(nn.Module):
         return output
 
     def draw_architecture(self, archirecture, num_operations, name):
+        """Render the given architecture.
+
+        Args: 
+            architecture (dict): A dict with edges as keys and parameters as values.
+            num_operations (int): Retain the top-k strongest operations from distinct nodes.
+            name (str): Name of the given architecture for saving.
+
+        """
 
         dag = gv.Digraph(name)
         for child in self.dag.nodes():
