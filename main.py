@@ -320,7 +320,7 @@ def main():
                 ), f'{config.checkpoint_directory}/epoch_{epoch}')
 
                 summary_writer.add_image(
-                    tag="architecture/normal",
+                    tag='architecture/normal',
                     img_tensor=skimage.io.imread(model.draw_normal_architecture(
                         num_operations=2,
                         name=f'normal_cell_{epoch}',
@@ -330,7 +330,7 @@ def main():
                     dataformats='HWC'
                 )
                 summary_writer.add_image(
-                    tag="architecture/reduction",
+                    tag='architecture/reduction',
                     img_tensor=skimage.io.imread(model.draw_reduction_architecture(
                         num_operations=2,
                         name=f'reduction_cell_{epoch}',
