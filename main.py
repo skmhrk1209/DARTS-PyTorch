@@ -173,7 +173,6 @@ def main():
     # model = parallel.DistributedDataParallel(model, delay_allreduce=True)
     def average_gradients(parameters):
         for parameter in parameters:
-            if parameter.grad is None: print(parameter.shape)
             distributed.all_reduce(parameter.grad.data)
             parameter.grad.data /= config.world_size
 
@@ -279,6 +278,11 @@ def main():
                 train_loss = criterion(train_logits, train_labels)
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
+
+                for key, module in model.network.items():
+                    for param in module.parameters():
+                        if param.grad is None:
+                            print(key, "<=------------------")
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
