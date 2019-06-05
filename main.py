@@ -239,27 +239,6 @@ def main():
             model.train()
             train_sampler.set_epoch(epoch)
 
-            if config.global_rank == 0:
-
-                summary_writer.add_image(
-                    tag="architecture/normal",
-                    img_tensor=skimage.io.imread(model.module.draw_normal_architecture(
-                        num_operations=2,
-                        name=f'normal_cell_{epoch}.gv'
-                    )),
-                    global_step=global_step,
-                    dataformats='HWC'
-                )
-                summary_writer.add_image(
-                    tag="architecture/reduction",
-                    img_tensor=skimage.io.imread(model.module.draw_reduction_architecture(
-                        num_operations=2,
-                        name=f'reduction_cell_{epoch}.gv'
-                    )),
-                    global_step=global_step,
-                    dataformats='HWC'
-                )
-
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 
                 step_begin = time.time()
@@ -386,15 +365,23 @@ def main():
                     global_step=global_step
                 ), f'{config.checkpoint_directory}/epoch_{epoch}')
 
-                summary_writer.add_figure(
+                summary_writer.add_image(
                     tag="architecture/normal",
-                    figure=model.module.draw_normal_architecture(),
-                    global_step=global_step
+                    img_tensor=skimage.io.imread(model.module.draw_normal_architecture(
+                        num_operations=2,
+                        name=f'normal_cell_{epoch}.gv'
+                    )),
+                    global_step=global_step,
+                    dataformats='HWC'
                 )
-                summary_writer.add_figure(
+                summary_writer.add_image(
                     tag="architecture/reduction",
-                    figure=model.module.draw_reduction_architecture(),
-                    global_step=global_step
+                    img_tensor=skimage.io.imread(model.module.draw_reduction_architecture(
+                        num_operations=2,
+                        name=f'reduction_cell_{epoch}.gv'
+                    )),
+                    global_step=global_step,
+                    dataformats='HWC'
                 )
 
             lr_scheduler.step()
