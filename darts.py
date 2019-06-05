@@ -145,18 +145,18 @@ class DARTS(nn.Module):
             if child not in node_outputs:
                 node_outputs[child] = sum(sum(
                     operation(self.forward_cell(cell, reduction, parent, node_outputs)) * weight
-                    for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))]))
+                    for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))], dim=0))
                 ) for parent in self.dag.predecessors(child))
         return node_outputs[child]
 
     def forward(self, input):
         output = self.network.conv(input)
-        outputs = [output, output]
+        cell_outputs = [output, output]
         for i, cell in enumerate(self.network.cells):
-            cell_outputs = {0: cell[str((-2, 0))](outputs[-2]), 1: cell[str((-1, 1))](outputs[-1])}
-            self.forward_cell(cell, i in self.reduction_cells, self.num_nodes - 1, cell_outputs)
-            outputs.append(torch.cat(list(cell_outputs.values())[2:], dim=1))
-        output = outputs[-1]
+            node_outputs = {0: cell[str((-2, 0))](cell_outputs[-2]), 1: cell[str((-1, 1))](cell_outputs[-1])}
+            self.forward_cell(cell, i in self.reduction_cells, self.num_nodes - 1, node_outputs)
+            cell_outputs.append(torch.cat(list(node_outputs.values())[2:], dim=1))
+        output = cell_outputs[-1]
         output = self.network.global_avg_pool2d(output).squeeze()
         output = self.network.linear(output)
         return output
@@ -175,7 +175,7 @@ class DARTS(nn.Module):
             edges = []
             for parent in self.dag.predecessors(child):
                 operations = map(str, self.operations)
-                weights = nn.functional.softmax(archirecture[str((parent, child))])
+                weights = nn.functional.softmax(archirecture[str((parent, child))], dim=0)
                 weight, operation = max((weight, operation) for weight, operation in zip(weights, operations) if 'zero' not in operation)
                 edges.append((map(str, (parent, child)), (weight, operation)))
             if edges:
