@@ -10,7 +10,7 @@ from torchvision import transforms
 from torchvision import models
 from tensorboardX import SummaryWriter
 from apex import amp
-from appx import optimizers
+from apex import optimizers
 from apex import parallel
 from darts import *
 from ops import *
