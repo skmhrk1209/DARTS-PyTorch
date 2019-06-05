@@ -261,7 +261,7 @@ def main():
                     if isinstance(module, (Conv2d)):
                         for p in module.parameters():
                             if p.grad is None:
-                                print(module)
+                                print(p.shape)
                                 break
                 model.network.apply(f)
 
