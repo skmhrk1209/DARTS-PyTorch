@@ -9,6 +9,9 @@ from torchvision import datasets
 from torchvision import transforms
 from torchvision import models
 from tensorboardX import SummaryWriter
+from apex import amp
+from appx import optimizers
+from apex import parallel
 from darts import *
 from ops import *
 import numpy as np
@@ -139,13 +142,6 @@ def main():
         num_classes=10
     ).cuda()
 
-    model = nn.parallel.distributed.DistributedDataParallel(
-        module=model,
-        device_ids=[config.local_rank],
-        output_device=config.local_rank,
-        # find_unused_parameters=True  # NOTE: What's this?
-    )
-
     criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
 
     config.global_batch_size = config.local_batch_size * config.world_size
@@ -164,6 +160,17 @@ def main():
         betas=(config.architecture_beta1, config.architecture_beta2),
         weight_decay=config.architecture_weight_decay
     )
+
+    [model], [network_optimizer, architecture_optimizer] = amp.initialize(
+        models=[model],
+        optimizers=[network_optimizer, architecture_optimizer],
+        opt_level=args.opt_level
+    )
+
+    # nn.parallel.DistributedDataParallel and apex.parallel.DistributedDataParallel don't support multiple backward passes.
+    # This means `all_reduce` is executed when the first backward pass.
+    # So, we manually reduce all gradients.
+    # model = parallel.DistributedDataParallel(model, delay_allreduce=True)
 
     last_epoch = -1
     global_step = 0
@@ -256,23 +263,22 @@ def main():
                 # Approximate w*(α) by adapting w using only a single training step,
                 # without solving the inner optimization completely by training until convergence.
                 # ----------------------------------------------------------------
-                for parameter in model.module.architecture.parameters():
-                    parameter.requires_grad_(False)
+                # for parameter in model.module.architecture.parameters():
+                #     parameter.requires_grad_(False)
 
                 network_optimizer.zero_grad()
-
-                architecture_optimizer.zero_grad()
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels)
                 train_loss.backward()
 
+                with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
+                    scaled_train_loss.backward()
+
                 network_optimizer.step()
 
-                architecture_optimizer.step()
-
-                for parameter in model.module.architecture.parameters():
-                    parameter.requires_grad_(True)
+                # for parameter in model.module.architecture.parameters():
+                #     parameter.requires_grad_(True)
                 # ----------------------------------------------------------------
 
                 # Apply chain rule to the approximate architecture gradient.
