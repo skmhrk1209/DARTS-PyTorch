@@ -266,8 +266,8 @@ def main():
                                     print(module)
                                 break
                     else:
-                        for module in self.children():
-                            g(module)
+                        for main in module.children():
+                            g(m)
                     
                 g(model.network)
                 distributed.barrier()
