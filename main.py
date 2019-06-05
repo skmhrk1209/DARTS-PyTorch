@@ -283,7 +283,8 @@ def main():
                     for key, module in cell.items():
                         for p in module.parameters():
                             if p.grad is None:
-                                return
+                                print(index, key, module, '<-------------')
+                                break
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
