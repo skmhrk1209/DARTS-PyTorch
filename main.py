@@ -16,6 +16,7 @@ from darts import *
 from ops import *
 import numpy as np
 import skimage
+import functools
 import argparse
 import copy
 import json
@@ -47,19 +48,6 @@ class Dict(dict):
         del self[name]
 
 
-class Function(object):
-
-    def __init__(self, function, name):
-        self.function = function
-        self.name = name
-
-    def __call__(self, *args, **kwargs):
-        return self.function(*args, **kwargs)
-
-    def __str__(self):
-        return self.name
-
-
 def main():
 
     # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main.py
@@ -81,59 +69,49 @@ def main():
 
     model = DARTS(
         operations=[
-            Function(lambda in_channels, out_channels, stride: SeparableConv2d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                stride=stride,
+            functools.partial(
+                SeparableConv2d,
                 kernel_size=3,
                 padding=1,
                 affine=False
-            ), 'sep_conv_3x3'),
-            Function(lambda in_channels, out_channels, stride: SeparableConv2d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                stride=stride,
+            ),
+            functools.partial(
+                SeparableConv2d,
                 kernel_size=5,
                 padding=2,
                 affine=False
-            ), 'sep_conv_5x5'),
-            Function(lambda in_channels, out_channels, stride: DilatedConv2d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                stride=stride,
+            ),
+            functools.partial(
+                DilatedConv2d,
                 kernel_size=3,
                 padding=2,
                 dilation=2,
                 affine=False
-            ), 'dil_conv_3x3'),
-            Function(lambda in_channels, out_channels, stride: DilatedConv2d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                stride=stride,
+            ),
+            functools.partial(
+                DilatedConv2d,
                 kernel_size=5,
                 padding=4,
                 dilation=2,
                 affine=False
-            ), 'dil_conv_5x5'),
-            Function(lambda in_channels, out_channels, stride: nn.AvgPool2d(
-                stride=stride,
+            ),
+            functools.partial(
+                AvgPool2d,
                 kernel_size=3,
                 padding=1
-            ), 'avg_pool_3x3'),
-            Function(lambda in_channels, out_channels, stride: nn.MaxPool2d(
-                stride=stride,
+            ),
+            functools.partial(
+                nn.MaxPool2d,
                 kernel_size=3,
                 padding=1
-            ), 'max_pool_3x3'),
-            Function(lambda in_channels, out_channels, stride: Conv2d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                stride=stride,
+            ),
+            functools.partial(
+                Conv2d,
                 kernel_size=1,
                 padding=0,
                 affine=False
-            ) if stride > 1 else nn.Identity(), 'identity'),
-            Function(lambda in_channels, out_channels, stride: Zero(), 'zero')
+            ),
+            functools.partial(Zero)
         ],
         num_nodes=6,
         num_cells=8,

@@ -4,9 +4,10 @@ from torch import nn
 
 class Conv2d(nn.Module):
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, affine, preactivation=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding,
+                 affine, preactivation=True, **kwargs):
         super().__init__()
-        self.conv_block = nn.Sequential(
+        self.module = nn.Sequential(
             nn.ReLU() if preactivation else nn.Identity(),
             nn.Conv2d(
                 in_channels=in_channels,
@@ -23,16 +24,17 @@ class Conv2d(nn.Module):
         )
 
     def forward(self, input):
-        return self.conv_block(input)
+        return self.module(input)
 
 
 class DilatedConv2d(nn.Module):
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation, affine, preactivation=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding,
+                 dilation, affine, preactivation=True, **kwargs):
 
         super().__init__()
 
-        self.conv_block = nn.Sequential(
+        self.module = nn.Sequential(
             nn.ReLU() if preactivation else nn.Identity(),
             nn.Conv2d(
                 in_channels=in_channels,
@@ -57,16 +59,17 @@ class DilatedConv2d(nn.Module):
         )
 
     def forward(self, input):
-        return self.conv_block(input)
+        return self.module(input)
 
 
 class SeparableConv2d(nn.Module):
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, affine, preactivation=True):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding,
+                 affine, preactivation=True, **kwargs):
 
         super().__init__()
 
-        self.conv_block = nn.Sequential(
+        self.module = nn.Sequential(
             nn.ReLU() if preactivation else nn.Identity(),
             nn.Conv2d(
                 in_channels=in_channels,
@@ -110,12 +113,38 @@ class SeparableConv2d(nn.Module):
         )
 
     def forward(self, input):
-        return self.conv_block(input)
+        return self.module(input)
+
+
+class AvgPool2d(nn.Module):
+    def __init__(self, kernel_size, stride, padding, **kwargs):
+        super().__init__()
+        self.module = nn.AvgPool2d(
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding
+        )
+
+    def forward(self, input):
+        return self.module(input)
+
+
+class MaxPool2d(nn.Module):
+    def __init__(self, kernel_size, stride, padding, **kwargs):
+        super().__init__()
+        self.module = nn.MaxPool2d(
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding
+        )
+
+    def forward(self, input):
+        return self.module(input)
 
 
 class Zero(nn.Module):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
 
     def forward(self, input):
