@@ -102,7 +102,7 @@ class DARTS(nn.Module):
                             in_channels=num_channels,
                             out_channels=num_channels,
                             stride=2 if reduction and parent in range(self.num_input_nodes) else 1
-                        ) for name, operation in self.operations
+                        ) for operation in self.operations.values()
                     ]) for parent, child in self.dag.edges()
                 },
                 # NOTE: Should be factorized reduce?
