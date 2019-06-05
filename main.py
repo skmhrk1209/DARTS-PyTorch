@@ -112,7 +112,7 @@ def main():
                 affine=False
             ),
             functools.partial(Zero)
-        ],
+        ][-2:],
         num_nodes=6,
         num_cells=8,
         reduction_cells=[2, 5],
@@ -245,7 +245,7 @@ def main():
                 val_labels = val_labels.cuda()
 
                 # `w` in the paper.
-                # network_parameters = [parameter.clone().detach() for parameter in model.network.parameters()]
+                network_parameters = [parameter.clone().detach() for parameter in model.network.parameters()]
 
                 # Approximate w*(α) by adapting w using only a single training step,
                 # without solving the inner optimization completely by training until convergence.
@@ -264,7 +264,7 @@ def main():
                                 for p in m.parameters():
                                     if p.grad is None:
                                         if config.global_rank == 0:
-                                            print("xxxxxxx", (e, m, p.shape))
+                                            print("xxxxxxx", (e, p.shape))
                                 
                 
                 distributed.barrier()
