@@ -176,7 +176,8 @@ class DARTS(nn.Module):
             for parent in self.dag.predecessors(child):
                 operations = map(str, self.operations)
                 weights = nn.functional.softmax(archirecture[str((parent, child))])
-                edges.append((map(str, (parent, child)), max(zip(weights, operations))))
+                weight, operation = max((weight, operation) for weight, operation in zip(weights, operations) if 'zero' not in operation)
+                edges.append((map(str, (parent, child)), (weight, operation)))
             if edges:
                 edges = sorted(edges, key=itemgetter(1))[-num_operations:]
                 for (parent, child), (weight, operation) in edges:
