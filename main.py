@@ -262,9 +262,10 @@ def main():
                         for p in module.parameters():
                             if p.grad is None:
                                 if config.global_rank == 0:
-                                    print(p.shape)
+                                    print(module)
                                 break
                 model.network.apply(f)
+                distributed.barrier()
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
