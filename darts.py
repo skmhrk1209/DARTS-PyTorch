@@ -101,7 +101,7 @@ class DARTS(nn.Module):
                         operation(
                             in_channels=num_channels,
                             out_channels=num_channels,
-                            stride=2 if reduction and parent in [0, 1] else 1
+                            stride=2 if reduction and parent in range(self.num_input_nodes) else 1
                         ) for operation in self.operations
                     ]) for parent, child in self.dag.edges()
                 },
