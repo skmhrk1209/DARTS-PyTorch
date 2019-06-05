@@ -94,11 +94,6 @@ class DARTS(nn.Module):
                 reduction = True
                 num_channels <<= 1
 
-            print(f"i = {i}")
-            for input_node in range(self.num_input_nodes):
-                print(f"k = {i - input_node}")
-                print(f'stride: {1 << len([j for j in self.reduction_cells if (i - input_node) < j < i])}')
-
             cell = nn.ModuleDict({
                 **{
                     str((parent, child)): nn.ModuleList([
@@ -114,7 +109,7 @@ class DARTS(nn.Module):
                     str((input_node - self.num_input_nodes, input_node)): Conv2d(
                         in_channels=out_channels[input_node - self.num_input_nodes],
                         out_channels=num_channels,
-                        stride=1 << len([j for j in self.reduction_cells if (i - input_node) < j < i]),
+                        stride=1 << len([j for j in self.reduction_cells if (i + input_node - self.num_input_nodes) < j < i]),
                         kernel_size=1,
                         padding=0,
                         affine=False
