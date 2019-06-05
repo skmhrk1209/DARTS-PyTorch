@@ -245,7 +245,7 @@ def main():
                 val_labels = val_labels.cuda()
 
                 # `w` in the paper.
-                network_parameters = [parameter.clone().detach() for parameter in model.network.parameters()]
+                # network_parameters = [parameter.clone().detach() for parameter in model.network.parameters()]
 
                 # Approximate w*(α) by adapting w using only a single training step,
                 # without solving the inner optimization completely by training until convergence.
