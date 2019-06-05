@@ -142,7 +142,7 @@ def main():
         module=model,
         device_ids=[config.local_rank],
         output_device=config.local_rank,
-        find_unused_parameters=True  # NOTE: What's this?
+        # find_unused_parameters=True  # NOTE: What's this?
     )
 
     criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
