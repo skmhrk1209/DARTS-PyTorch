@@ -81,8 +81,6 @@ def main():
 
     input = nn.Parameter(torch.ones(1))
     input.cuda()
-    print(input.requires_grad)
-    print(type(input), type(input.grad), type(input.grad.data))
     output = input ** 2
 
     output.backward()
