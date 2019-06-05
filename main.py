@@ -257,17 +257,6 @@ def main():
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
 
-                for cell in model.network.cells:
-                    for e, module in cell.items():
-                        if isinstance(module, nn.ModuleList):
-                            for m in module:
-                                for p in m.parameters():
-                                    if p.grad is None:
-                                        if config.global_rank == 0:
-                                            print("xxxxxxx", (e, p.shape))
-
-                distributed.barrier()
-
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
                 # ----------------------------------------------------------------

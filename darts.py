@@ -16,12 +16,13 @@ class DARTS(nn.Module):
 
     """
 
-    def __init__(self, operations, num_nodes, num_cells, reduction_cells, num_channels, num_classes):
+    def __init__(self, operations, num_nodes, num_input_nodes, num_cells, reduction_cells, num_channels, num_classes):
         """Build DARTS with the given operations.
 
         Args:
             operations (list): List of nn.Module initializer that takes in_channels, out_channels, stride as arguments.
             num_nodes (int): Number of nodes in each cell.
+            num_input_nodes (int): Number of input nodes in each cell.
             num_cells (int): Number of cells in the network.
             reduction_cells (list): List of cell index that performs spatial reduction.
             num_channels (int): Number of channels of the first cell.
@@ -32,6 +33,7 @@ class DARTS(nn.Module):
 
         self.operations = operations
         self.num_nodes = num_nodes
+        self.num_input_nodes = num_input_nodes
         self.num_cells = num_cells
         self.reduction_cells = reduction_cells
         self.num_channels = num_channels
@@ -46,7 +48,7 @@ class DARTS(nn.Module):
         """
         self.dag = nx.DiGraph()
         for parent in range(self.num_nodes):
-            for child in range(self.num_nodes):
+            for child in range(self.num_input_nodes, self.num_nodes):
                 if parent < child:
                     self.dag.add_edge(parent, child)
 
@@ -68,9 +70,12 @@ class DARTS(nn.Module):
         """
         self.network = nn.ModuleDict()
 
+        # NOTE: Why multiplier is 3?
+        multiplier = 3
+
         self.network.conv = Conv2d(
             in_channels=3,
-            out_channels=self.num_channels * 3,
+            out_channels=self.num_channels * multiplier,
             stride=1,
             kernel_size=3,
             padding=1,
@@ -80,56 +85,48 @@ class DARTS(nn.Module):
 
         self.network.cells = nn.ModuleList()
 
-        # NOTE: Why multiplier is 3?
-        in_channels_1st = self.num_channels * 3
-        in_channels_2nd = self.num_channels * 3
-        out_channels = self.num_channels
-        reduction_input = False
+        out_channels = [self.num_channels * multiplier] * self.num_input_nodes
+        num_channels = self.num_channels
 
-        for i in range(self.num_cells):
+        for cell in range(self.num_cells):
 
-            reduction_output = False
-            if i in self.reduction_cells:
-                reduction_output = True
-                out_channels <<= 1
+            reduction = False
+            if cell in self.reduction_cells:
+                reduction = True
+                num_channels <<= 1
 
-            cell = nn.ModuleDict({
-                str((parent, child)): nn.ModuleList([
-                    operation(
-                        in_channels=out_channels,
-                        out_channels=out_channels,
-                        stride=2 if reduction_output and parent in [0, 1] else 1
-                    ) for operation in self.operations
-                ]) for parent, child in self.dag.edges()
-            })
-            # NOTE: Should be factorized reduce?
-            cell[str((-2, 0))] = Conv2d(
-                in_channels=in_channels_1st,
-                out_channels=out_channels,
-                stride=2 if reduction_input else 1,
-                kernel_size=1,
-                padding=0,
-                affine=False
-            )
-            cell[str((-1, 1))] = Conv2d(
-                in_channels=in_channels_2nd,
-                out_channels=out_channels,
-                stride=1,
-                kernel_size=1,
-                padding=0,
-                affine=False
-            )
+            self.network.cells.append(nn.ModuleDict({
+                **{
+                    str((parent, child)): nn.ModuleList([
+                        operation(
+                            in_channels=num_channels,
+                            out_channels=num_channels,
+                            stride=2 if reduction and parent in [0, 1] else 1
+                        ) for operation in self.operations
+                    ]) for parent, child in self.dag.edges()
+                },
+                # NOTE: Should be factorized reduce?
+                **{
+                    str((input_node - self.num_input_nodes, input_node)): Conv2d(
+                        in_channels=out_channels[input_node - self.num_input_nodes],
+                        out_channels=num_channels,
+                        stride=1 << len(
+                            reduction_cell for reduction_cell in self.reduction_cells
+                            if (cell - input_node) < reduction_cell < cell
+                        ),
+                        kernel_size=1,
+                        padding=0,
+                        affine=False
+                    ) for input_node in range(self.num_input_nodes)
+                }
+            }))
 
-            self.network.cells.append(cell)
-
-            in_channels_1st = in_channels_2nd
-            in_channels_2nd = out_channels * (self.num_nodes - 2)
-            reduction_input = reduction_output
+            out_channels.append(num_channels * (self.num_nodes - self.num_input_nodes))
 
         self.network.global_avg_pool2d = nn.AdaptiveAvgPool2d(1)
-        self.network.linear = nn.Linear(in_channels_2nd, self.num_classes, bias=True)
+        self.network.linear = nn.Linear(out_channels[-1], self.num_classes, bias=True)
 
-    def forward_cell_(self, cell, reduction, child, node_outputs):
+    def forward_cell(self, cell, reduction, child, node_outputs):
         """forward in the given cell.
 
         Args:
@@ -149,34 +146,17 @@ class DARTS(nn.Module):
                 ) for parent in self.dag.predecessors(child))
         return node_outputs[child]
 
-    def forward_cell(self, cell, reduction, child, node_outputs):
-        """forward in the given cell.
-
-        Args:
-            cell (dict): A dict with edges as keys and operations as values.
-            reduction (bool): Whether the cell performs spatial reduction.
-            child (int): The output node in the cell.
-            node_outputs (dict): A dict with node as keys and its outputs as values.
-                This is to avoid duplicate calculation in recursion.
-
-        """
-        architecture = self.architecture.reduction if reduction else self.architecture.normal
-        if self.dag.predecessors(child):
-            if child not in node_outputs:
-                node_outputs[child] = 0
-                for parent in self.dag.predecessors(child):
-                    for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))], dim=0)):
-                        
-                        node_outputs[child] += operation(self.forward_cell(cell, reduction, parent, node_outputs)) * weight
-        return node_outputs[child]
-
     def forward(self, input):
         output = self.network.conv(input)
-        cell_outputs = [output, output]
+        cell_outputs = [output] * self.num_input_nodes
         for i, cell in enumerate(self.network.cells):
-            node_outputs = {0: cell[str((-2, 0))](cell_outputs[-2]), 1: cell[str((-1, 1))](cell_outputs[-1])}
+            node_outputs = {
+                input_node: cell[str((input_node - self.num_input_nodes, input_node))](cell_outputs[input_node - self.num_input_nodes])
+                for input_node in range(self.num_input_nodes)
+            }
             self.forward_cell(cell, i in self.reduction_cells, self.num_nodes - 1, node_outputs)
-            cell_outputs.append(torch.cat(list(node_outputs.values())[2:], dim=1))
+            _, node_outputs = zip(*sorted(node_outputs.items()))
+            cell_outputs.append(torch.cat(node_outputs[self.num_input_nodes:], dim=1))
         output = cell_outputs[-1]
         output = self.network.global_avg_pool2d(output).squeeze()
         output = self.network.linear(output)
