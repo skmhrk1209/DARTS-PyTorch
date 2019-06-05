@@ -269,7 +269,7 @@ def main():
                         for module in self.children():
                             g(module)
                     
-                model.network.apply(f)
+                g(model.network)
                 distributed.barrier()
 
                 average_gradients(model.network.parameters())
