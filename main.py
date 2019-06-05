@@ -114,6 +114,7 @@ def main():
             functools.partial(Zero)
         ],
         num_nodes=6,
+        num_input_nodes=2,
         num_cells=8,
         reduction_cells=[2, 5],
         num_channels=16,
