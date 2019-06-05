@@ -166,6 +166,7 @@ class DARTS(nn.Module):
                 node_outputs[child] = 0
                 for parent in self.dag.predecessors(child):
                     for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))], dim=0)):
+                        print(operation, weight)
                         node_outputs[child] += operation(self.forward_cell(cell, reduction, parent, node_outputs)) * weight
         return node_outputs[child]
 
