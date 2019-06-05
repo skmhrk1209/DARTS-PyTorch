@@ -166,6 +166,7 @@ class DARTS(nn.Module):
             architecture (dict): A dict with edges as keys and parameters as values.
             num_operations (int): Retain the top-k strongest operations from distinct nodes.
             name (str): Name of the given architecture for saving.
+            directory (str): Directory for saving.
 
         """
         dag = gv.Digraph(name)
