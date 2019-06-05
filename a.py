@@ -59,6 +59,12 @@ class Function(object):
     def __str__(self):
         return self.name
 
+class Module(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.p = nn.Parameter(torch.ones(1))
+    def forward(self):
+        return self.p ** 2
 
 def main():
 
@@ -79,14 +85,14 @@ def main():
     torch.manual_seed(0)
     torch.cuda.set_device(config.local_rank)
 
-    input = nn.Parameter(torch.ones(1))
-    input.cuda()
-    output = input ** 2
+    m = Module().cuda()
+
+    output = m()
 
     output.backward()
 
-    distributed.all_reduce(input.grad.data)
-    print(input.grad)
+    distributed.all_reduce(m.p.grad)
+    print(m.p.grad)
 
 if __name__ == '__main__':
     main()
