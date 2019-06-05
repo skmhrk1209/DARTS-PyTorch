@@ -161,8 +161,8 @@ def main():
         weight_decay=config.architecture_weight_decay
     )
 
-    [model], [network_optimizer, architecture_optimizer] = amp.initialize(
-        models=[model],
+    model, [network_optimizer, architecture_optimizer] = amp.initialize(
+        models=model,
         optimizers=[network_optimizer, architecture_optimizer],
         opt_level=args.opt_level
     )
@@ -171,6 +171,15 @@ def main():
     # This means `all_reduce` is executed when the first backward pass.
     # So, we manually reduce all gradients.
     # model = parallel.DistributedDataParallel(model, delay_allreduce=True)
+    def average_gradients(parameters):
+        for parameter in parameters:
+            distributed.all_reduce(parameter.grad.data)
+            parameter.grad.data /= config.world_size
+
+    def average_tensor(tensors):
+        for tensor in tensors:
+            distributed.all_reduce(tensor.data)
+            tensor.data /= config.world_size
 
     last_epoch = -1
     global_step = 0
@@ -258,27 +267,20 @@ def main():
                 val_labels = val_labels.cuda()
 
                 # `w` in the paper.
-                network_parameters = [parameter.clone() for parameter in model.module.network.parameters()]
+                network_parameters = [parameter.clone().detach() for parameter in model.module.network.parameters()]
 
                 # Approximate w*(α) by adapting w using only a single training step,
                 # without solving the inner optimization completely by training until convergence.
                 # ----------------------------------------------------------------
-                # for parameter in model.module.architecture.parameters():
-                #     parameter.requires_grad_(False)
-
                 network_optimizer.zero_grad()
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels)
-                train_loss.backward()
-
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
 
+                average_gradients(model.module.network.parameters())
                 network_optimizer.step()
-
-                # for parameter in model.module.architecture.parameters():
-                #     parameter.requires_grad_(True)
                 # ----------------------------------------------------------------
 
                 # Apply chain rule to the approximate architecture gradient.
@@ -289,35 +291,39 @@ def main():
 
                 val_logits = model(val_images)
                 val_loss = criterion(val_logits, val_labels)
-                val_loss.backward()
+                with amp.scale_loss(val_loss, [network_optimizer, architecture_optimizer]) as scaled_val_loss:
+                    scaled_val_loss.backward()
 
-                network_gradients = [parameter.grad.clone() for parameter in model.module.network.parameters()]
+                network_gradients = [parameter.grad.clone().detach() for parameter in model.module.network.parameters()]
                 gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in network_gradients]))
                 # ----------------------------------------------------------------
 
                 # Avoid calculate hessian-vector product using the finite difference approximation.
                 # ----------------------------------------------------------------
                 for parameter, parameter_, gradient in zip(model.module.network.parameters(), network_parameters, network_gradients):
-                    parameter.data.copy_(parameter_ + gradient * config.epsilon)
+                    parameter.data = (parameter_ + gradient * config.epsilon).data
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * -(config.network_lr / (2 * config.epsilon / gradient_norm))
-                train_loss.backward()
+                with amp.scale_loss(train_loss, architecture_optimizer) as scaled_train_loss:
+                    scaled_train_loss.backward()
 
                 for parameter, parameter_, gradient in zip(model.module.network.parameters(), network_parameters, network_gradients):
-                    parameter.data.copy_(parameter_ - gradient * config.epsilon)
+                    parameter.data = (parameter_ - gradient * config.epsilon).data
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * (config.network_lr / (2 * config.epsilon / gradient_norm))
-                train_loss.backward()
+                with amp.scale_loss(train_loss, architecture_optimizer) as scaled_train_loss:
+                    scaled_train_loss.backward()
                 # ----------------------------------------------------------------
 
                 # Finally, update architecture parameter.
+                average_gradients(model.module.architecture.parameters())
                 architecture_optimizer.step()
 
                 # Restore previous network parameter.
                 for parameter, parameter_ in zip(model.module.network.parameters(), network_parameters):
-                    parameter.data.copy_(parameter_)
+                    parameter.data = parameter_.data
 
                 # Update network parameter.
                 # ----------------------------------------------------------------
@@ -325,8 +331,10 @@ def main():
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels)
-                train_loss.backward()
+                with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
+                    scaled_train_loss.backward()
 
+                average_gradients(model.module.network.parameters())
                 network_optimizer.step()
                 # ----------------------------------------------------------------
 
@@ -336,16 +344,7 @@ def main():
                 val_predictions = torch.argmax(val_logits, dim=1)
                 val_accuracy = torch.mean((val_predictions == val_labels).float())
 
-                distributed.all_reduce(train_loss)
-                distributed.all_reduce(val_loss)
-
-                distributed.all_reduce(train_accuracy)
-                distributed.all_reduce(val_accuracy)
-
-                train_loss = train_loss / config.world_size
-                val_loss = val_loss / config.world_size
-                train_accuracy = train_accuracy / config.world_size
-                val_accuracy = val_accuracy / config.world_size
+                average_tensor([train_loss, val_loss, train_accuracy, val_accuracy])
 
                 step_end = time.time()
 
