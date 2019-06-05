@@ -257,7 +257,7 @@ def main():
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
                     
-                for cell in model.network.cells[:1]:
+                for cell in model.network.cells:
                     for e, module in cell.items():
                         if isinstance(module, nn.ModuleList):
                             for m in module:
