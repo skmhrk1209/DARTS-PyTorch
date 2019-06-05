@@ -173,7 +173,7 @@ def main():
     # model = parallel.DistributedDataParallel(model, delay_allreduce=True)
     def average_gradients(parameters):
         for parameter in parameters:
-            if parameter.grad is None: print(parameter)
+            if parameter.grad is None: print(parameter.shape)
             distributed.all_reduce(parameter.grad.data)
             parameter.grad.data /= config.world_size
 
