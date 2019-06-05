@@ -94,5 +94,9 @@ def main():
     distributed.all_reduce(m.p.grad)
     print(m.p.grad)
 
+    m.p.grad.copy_(2)
+    distributed.all_reduce(m.p.grad)
+    print(m.p.grad)
+
 if __name__ == '__main__':
     main()
