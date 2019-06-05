@@ -20,7 +20,8 @@ class DARTS(nn.Module):
         """Build DARTS with the given operations.
 
         Args:
-            operations (list): List of nn.Module initializer that takes in_channels, out_channels, stride as arguments.
+            operations (dict): Dict with name as keys and nn.Module initializer 
+                that takes in_channels, out_channels, stride as arguments as values.
             num_nodes (int): Number of nodes in each cell.
             num_input_nodes (int): Number of input nodes in each cell.
             num_cells (int): Number of cells in the network.
@@ -101,7 +102,7 @@ class DARTS(nn.Module):
                             in_channels=num_channels,
                             out_channels=num_channels,
                             stride=2 if reduction and parent in range(self.num_input_nodes) else 1
-                        ) for operation in self.operations
+                        ) for name, operation in self.operations
                     ]) for parent, child in self.dag.edges()
                 },
                 # NOTE: Should be factorized reduce?
@@ -171,12 +172,13 @@ class DARTS(nn.Module):
         """
         dag = gv.Digraph(name)
         for child in self.dag.nodes():
-            edges = []
-            for parent in self.dag.predecessors(child):
-                operations = map(str, self.operations)
-                weights = nn.functional.softmax(archirecture[str((parent, child))], dim=0)
-                weight, operation = max((weight, operation) for weight, operation in zip(weights, operations) if 'Zero' not in operation)
-                edges.append((map(str, (parent, child)), (weight, operation)))
+            edges = [(
+                tuple(map(str, (parent, child))),
+                max((weight, operation) for weight, operation in zip(
+                    nn.functional.softmax(archirecture[str((parent, child))], dim=0),
+                    self.operations.keys()
+                ) if 'Zero' not in operation)
+            ) for parent in self.dag.predecessors(child)]
             if edges:
                 edges = sorted(edges, key=itemgetter(1))[-num_operations:]
                 for (parent, child), (weight, operation) in edges:

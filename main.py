@@ -62,51 +62,16 @@ def main():
     torch.cuda.set_device(config.local_rank)
 
     model = DARTS(
-        operations=[
-            functools.partial(
-                SeparableConv2d,
-                kernel_size=3,
-                padding=1,
-                affine=False
-            ),
-            functools.partial(
-                SeparableConv2d,
-                kernel_size=5,
-                padding=2,
-                affine=False
-            ),
-            functools.partial(
-                DilatedConv2d,
-                kernel_size=3,
-                padding=2,
-                dilation=2,
-                affine=False
-            ),
-            functools.partial(
-                DilatedConv2d,
-                kernel_size=5,
-                padding=4,
-                dilation=2,
-                affine=False
-            ),
-            functools.partial(
-                AvgPool2d,
-                kernel_size=3,
-                padding=1
-            ),
-            functools.partial(
-                MaxPool2d,
-                kernel_size=3,
-                padding=1
-            ),
-            functools.partial(
-                Conv2d,
-                kernel_size=1,
-                padding=0,
-                affine=False
-            ),
-            functools.partial(Zero)
-        ],
+        operations=dict(
+            sep_conv_3x3=functools.partial(SeparableConv2d, kernel_size=3, padding=1, affine=False),
+            sep_conv_5x5=functools.partial(SeparableConv2d, kernel_size=5, padding=2, affine=False),
+            dil_conv_3x3=functools.partial(DilatedConv2d, kernel_size=3, padding=2, dilation=2, affine=False),
+            dil_conv_5x5=functools.partial(DilatedConv2d, kernel_size=5, padding=4, dilation=2, affine=False),
+            avg_pool_3x3=functools.partial(AvgPool2d, kernel_size=3, padding=1),
+            max_pool_3x3=functools.partial(MaxPool2d, kernel_size=3, padding=1),
+            identity=functools.partial(Conv2d, kernel_size=1, padding=0, affine=False),
+            zero=functools.partial(Zero)
+        ),
         num_nodes=6,
         num_input_nodes=2,
         num_cells=8,
