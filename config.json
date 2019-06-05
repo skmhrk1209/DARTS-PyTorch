@@ -13,5 +13,6 @@
     "global_batch_denom": 64,
     "epsilon": 1e-2,
     "checkpoint_directory": "checkpoints",
-    "event_directory": "events"
+    "event_directory": "events",
+    "architecture_directory": "architectures"
 }

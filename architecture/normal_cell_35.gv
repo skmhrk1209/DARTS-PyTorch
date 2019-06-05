@@ -1,0 +1,11 @@
+digraph normal_cell_35 {
+	0 -> 1 [label=zero]
+	1 -> 2 [label=sep_conv_5x5]
+	0 -> 2 [label=zero]
+	1 -> 3 [label=sep_conv_3x3]
+	0 -> 3 [label=sep_conv_3x3]
+	2 -> 4 [label=sep_conv_5x5]
+	0 -> 4 [label=zero]
+	1 -> 5 [label=dil_conv_3x3]
+	0 -> 5 [label=zero]
+}

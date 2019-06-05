@@ -1,0 +1,11 @@
+digraph reduction_cell_20 {
+	0 -> 1 [label=zero]
+	0 -> 2 [label=zero]
+	1 -> 2 [label=dil_conv_3x3]
+	0 -> 3 [label=max_pool_3x3]
+	2 -> 3 [label=dil_conv_5x5]
+	1 -> 4 [label=dil_conv_3x3]
+	3 -> 4 [label=dil_conv_5x5]
+	2 -> 5 [label=dil_conv_5x5]
+	1 -> 5 [label=dil_conv_3x3]
+}

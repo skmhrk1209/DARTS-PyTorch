@@ -143,7 +143,7 @@ def main():
         module=model,
         device_ids=[config.local_rank],
         output_device=config.local_rank,
-        find_unused_parameters=True  # NOTE: What's this?
+        # find_unused_parameters=True  # NOTE: What's this?
     )
 
     criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
@@ -178,6 +178,7 @@ def main():
     if config.global_rank == 0:
         os.makedirs(config.checkpoint_directory, exist_ok=True)
         os.makedirs(config.event_directory, exist_ok=True)
+        os.makedirs(config.architecture_directory, exist_ok=True)
         summary_writer = SummaryWriter(config.event_directory)
 
     if config.training:
@@ -255,6 +256,9 @@ def main():
                 # Approximate w*(α) by adapting w using only a single training step,
                 # without solving the inner optimization completely by training until convergence.
                 # ----------------------------------------------------------------
+                for parameter in model.module.architecture.parameters():
+                    parameter.requires_grad_(False)
+
                 network_optimizer.zero_grad()
 
                 train_logits = model(train_images)
@@ -262,6 +266,9 @@ def main():
                 train_loss.backward()
 
                 network_optimizer.step()
+
+                for parameter in model.module.architecture.parameters():
+                    parameter.requires_grad_(True)
                 # ----------------------------------------------------------------
 
                 # Apply chain rule to the approximate architecture gradient.
@@ -369,7 +376,8 @@ def main():
                     tag="architecture/normal",
                     img_tensor=skimage.io.imread(model.module.draw_normal_architecture(
                         num_operations=2,
-                        name=f'normal_cell_{epoch}'
+                        name=f'normal_cell_{epoch}',
+                        directory=config.architecture_directory
                     )),
                     global_step=global_step,
                     dataformats='HWC'
@@ -378,7 +386,8 @@ def main():
                     tag="architecture/reduction",
                     img_tensor=skimage.io.imread(model.module.draw_reduction_architecture(
                         num_operations=2,
-                        name=f'reduction_cell_{epoch}'
+                        name=f'reduction_cell_{epoch}',
+                        directory=config.architecture_directory
                     )),
                     global_step=global_step,
                     dataformats='HWC'

@@ -161,7 +161,7 @@ class DARTS(nn.Module):
         output = self.network.linear(output)
         return output
 
-    def draw_architecture(self, archirecture, num_operations, name):
+    def draw_architecture(self, archirecture, num_operations, name, directory):
         """Render the given architecture.
 
         Args: 
@@ -170,7 +170,6 @@ class DARTS(nn.Module):
             name (str): Name of the given architecture for saving.
 
         """
-
         dag = gv.Digraph(name)
         for child in self.dag.nodes():
             edges = []
@@ -182,10 +181,10 @@ class DARTS(nn.Module):
                 edges = sorted(edges, key=itemgetter(1))[-num_operations:]
                 for (parent, child), (weight, operation) in edges:
                     dag.edge(parent, child, label=operation)
-        return dag.render(format='png')
+        return dag.render(directory=directory, format='png')
 
-    def draw_normal_architecture(self, num_operations, name):
-        return self.draw_architecture(self.architecture.normal, num_operations, name)
+    def draw_normal_architecture(self, num_operations, name, directory):
+        return self.draw_architecture(self.architecture.normal, num_operations, name, directory)
 
-    def draw_reduction_architecture(self, num_operations, name):
-        return self.draw_architecture(self.architecture.reduction, num_operations, name)
+    def draw_reduction_architecture(self, num_operations, name, directory):
+        return self.draw_architecture(self.architecture.reduction, num_operations, name, directory)
