@@ -266,7 +266,7 @@ def main():
                                     print(module)
                                 break
                     else:
-                        for main in module.children():
+                        for m in module.children():
                             g(m)
                     
                 g(model.network)
