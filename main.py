@@ -261,11 +261,15 @@ def main():
 
                 network_optimizer.zero_grad()
 
+                architecture_optimizer.zero_grad()
+
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels)
                 train_loss.backward()
 
                 network_optimizer.step()
+
+                architecture_optimizer.step()
 
                 for parameter in model.module.architecture.parameters():
                     parameter.requires_grad_(True)
