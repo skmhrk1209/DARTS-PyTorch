@@ -96,7 +96,7 @@ def main():
 
     m.p.data.copy_(m.p.grad)
     distributed.all_reduce(m.p)
-    print(m.p.grad)
+    print(m.p)
 
 if __name__ == '__main__':
     main()
