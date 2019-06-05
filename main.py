@@ -112,7 +112,7 @@ def main():
                 affine=False
             ),
             functools.partial(Zero)
-        ][-2:],
+        ],
         num_nodes=6,
         num_cells=8,
         reduction_cells=[2, 5],
@@ -256,7 +256,7 @@ def main():
                 train_loss = criterion(train_logits, train_labels)
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
-                    
+
                 for cell in model.network.cells:
                     for e, module in cell.items():
                         if isinstance(module, nn.ModuleList):
@@ -265,8 +265,7 @@ def main():
                                     if p.grad is None:
                                         if config.global_rank == 0:
                                             print("xxxxxxx", (e, p.shape))
-                                
-                
+
                 distributed.barrier()
 
                 average_gradients(model.network.parameters())
