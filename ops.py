@@ -144,8 +144,9 @@ class MaxPool2d(nn.Module):
 
 class Zero(nn.Module):
 
-    def __init__(self, **kwargs):
+    def __init__(self, stride, **kwargs):
         super().__init__()
+        self.stride = stride
 
     def forward(self, input):
-        return input * 0.0
+        return input[..., ::self.stride, ::self.stride] * 0.0
