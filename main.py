@@ -256,8 +256,6 @@ def main():
                 train_loss = criterion(train_logits, train_labels)
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
-
-                def f(module):
                     
 
                 def g(module):
