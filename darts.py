@@ -109,11 +109,11 @@ class DARTS(nn.Module):
                     str((input_node - self.num_input_nodes, input_node)): Conv2d(
                         in_channels=out_channels[input_node - self.num_input_nodes],
                         out_channels=num_channels,
-                        stride=1 << len([j for j in self.reduction_cells if (i + input_node - self.num_input_nodes) < j < i]),
+                        stride=1 << len([j for j in self.reduction_cells if k < j < i]),
                         kernel_size=1,
                         padding=0,
                         affine=False
-                    ) for input_node in range(self.num_input_nodes)
+                    ) for input_node, k in zip(range(0, self.num_input_nodes), range(i - self.num_input_nodes, i))
                 }
             })
 

@@ -118,7 +118,9 @@ class SeparableConv2d(nn.Module):
 
 class AvgPool2d(nn.Module):
     def __init__(self, kernel_size, stride, padding, **kwargs):
+
         super().__init__()
+
         self.module = nn.AvgPool2d(
             kernel_size=kernel_size,
             stride=stride,
@@ -131,7 +133,9 @@ class AvgPool2d(nn.Module):
 
 class MaxPool2d(nn.Module):
     def __init__(self, kernel_size, stride, padding, **kwargs):
+
         super().__init__()
+
         self.module = nn.MaxPool2d(
             kernel_size=kernel_size,
             stride=stride,
@@ -145,6 +149,7 @@ class MaxPool2d(nn.Module):
 class Zero(nn.Module):
 
     def __init__(self, **kwargs):
+
         super().__init__()
 
     def forward(self, input):
