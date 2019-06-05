@@ -111,7 +111,7 @@ def main():
                 padding=0,
                 affine=False
             ),
-            #functools.partial(Zero)
+            functools.partial(Zero)
         ],
         num_nodes=6,
         num_cells=8,
@@ -257,22 +257,16 @@ def main():
                 with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
                     
-
-                def g(module):
-                    if isinstance(module, (DilatedConv2d, SeparableConv2d, Conv2d)):
-                        for p in module.parameters():
-                            if p.grad is None:
-                                if config.global_rank == 0:
-                                    print('aaaaaaa')
-                                break
-                        else:
-                            if config.global_rank == 0:
-                                print('bbbbbbbbbb')
-                    else:
-                        for child in module.children():
-                            g(child)
-                    
-                g(model.network)
+                for cell in model.network.cells[:1]:
+                    for (p, c), module in cell.items():
+                        if isinstance(module, nn.ModuleList):
+                            for m in module:
+                                for p in m.parameters():
+                                    if p.grad is None:
+                                        if congif.global_rank == 0:
+                                            print("xxxxxxx", (p, c, m))
+                                
+                
                 distributed.barrier()
 
                 average_gradients(model.network.parameters())
