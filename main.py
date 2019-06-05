@@ -263,8 +263,11 @@ def main():
                         for p in module.parameters():
                             if p.grad is None:
                                 if config.global_rank == 0:
-                                    print(module)
+                                    print('aaaaaaa')
                                 break
+                        else:
+                            if config.global_rank == 0:
+                                print('bbbbbbbbbb')
                     else:
                         for child in module.children():
                             g(child)
