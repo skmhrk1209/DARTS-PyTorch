@@ -80,6 +80,8 @@ def main():
     torch.cuda.set_device(config.local_rank)
 
     input = nn.Parameter(torch.ones(1)).cuda()
+    print(input.requires_grad)
+    print(type(input), type(input.data))
     output = input ** 2
 
     output.backward()
