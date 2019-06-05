@@ -280,11 +280,10 @@ def main():
                     scaled_train_loss.backward()
 
                 for cell in model.network.cells:
-                    for cell in cells:
-                        for key, module in cell:
-                            if p in module.parameters():
-                                if p.grad is None:
-                                    print(key, module)
+                    for key, module in cell:
+                        if p in module.parameters():
+                            if p.grad is None:
+                                print(key, module)
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
