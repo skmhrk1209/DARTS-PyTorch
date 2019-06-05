@@ -111,7 +111,7 @@ def main():
                 padding=0,
                 affine=False
             ),
-            functools.partial(Zero)
+            #functools.partial(Zero)
         ],
         num_nodes=6,
         num_cells=8,
