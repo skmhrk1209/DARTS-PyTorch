@@ -164,7 +164,7 @@ def main():
     model, [network_optimizer, architecture_optimizer] = amp.initialize(
         models=model,
         optimizers=[network_optimizer, architecture_optimizer],
-        opt_level=args.opt_level
+        opt_level=config.opt_level
     )
 
     # nn.parallel.DistributedDataParallel and apex.parallel.DistributedDataParallel don't support multiple backward passes.
