@@ -258,13 +258,13 @@ def main():
                     scaled_train_loss.backward()
                     
                 for cell in model.network.cells[:1]:
-                    for (p, c), module in cell.items():
+                    for e, module in cell.items():
                         if isinstance(module, nn.ModuleList):
                             for m in module:
                                 for p in m.parameters():
                                     if p.grad is None:
-                                        if congif.global_rank == 0:
-                                            print("xxxxxxx", (p, c, m))
+                                        if config.global_rank == 0:
+                                            print("xxxxxxx", (e, m))
                                 
                 
                 distributed.barrier()
