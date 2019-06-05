@@ -12,6 +12,7 @@ from tensorboardX import SummaryWriter
 from darts import *
 from ops import *
 import numpy as np
+import skimage
 import argparse
 import copy
 import json
@@ -237,6 +238,21 @@ def main():
 
             model.train()
             train_sampler.set_epoch(epoch)
+
+            if config.global_rank == 0:
+
+                summary_writer.add_image(
+                    tag="architecture/normal",
+                    img_tensor=skimage.io.imread(model.module.draw_normal_architecture()),
+                    global_step=global_step,
+                    dataformats='HWC'
+                )
+                summary_writer.add_image(
+                    tag="architecture/reduction",
+                    img_tensor=skimage.io.imread(model.module.draw_reduction_architecture()),
+                    global_step=global_step,
+                    dataformats='HWC'
+                )
 
             for local_step, ((train_images, train_labels), (val_images, val_labels)) in enumerate(zip(train_data_loader, val_data_loader)):
 

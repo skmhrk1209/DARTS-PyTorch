@@ -1,9 +1,10 @@
 import torch
 from torch import nn
 from ops import *
+from operator import *
 import networkx as nx
+import graphviz as gv
 import matplotlib.pyplot as plt
-from operator import itemgetter
 
 
 class DARTS(nn.Module):
@@ -30,19 +31,19 @@ class DARTS(nn.Module):
         for parent in range(self.num_nodes):
             for child in range(self.num_nodes):
                 if parent < child:
-                    self.dag.add_edge(parent, child, operations=self.operations)
+                    self.dag.add_edge(parent, child)
 
     def build_architecture(self):
         ''' Build parameter that represents cell architecture.
         '''
         self.architecture = nn.ParameterDict()
         self.architecture.normal = nn.ParameterDict({
-            str((parent, child)): nn.Parameter(torch.zeros(len(attribute['operations'])))
-            for parent, child, attribute in self.dag.edges(data=True)
+            str((parent, child)): nn.Parameter(torch.zeros(len(self.operations)))
+            for parent, child in self.dag.edges()
         })
         self.architecture.reduction = nn.ParameterDict({
-            str((parent, child)): nn.Parameter(torch.zeros(len(attribute['operations'])))
-            for parent, child, attribute in self.dag.edges(data=True)
+            str((parent, child)): nn.Parameter(torch.zeros(len(self.operations)))
+            for parent, child in self.dag.edges()
         })
 
     def build_network(self):
@@ -81,8 +82,8 @@ class DARTS(nn.Module):
                         in_channels=out_channels,
                         out_channels=out_channels,
                         stride=2 if reduction_output and parent in [0, 1] else 1
-                    ) for operation in attribute['operations']
-                ]) for parent, child, attribute in self.dag.edges(data=True)
+                    ) for operation in self.operations
+                ]) for parent, child in self.dag.edges()
             })
             # NOTE: Should be factorized reduce?
             cell[str((-2, 0))] = Conv2d(
@@ -133,35 +134,23 @@ class DARTS(nn.Module):
         output = self.network.linear(output)
         return output
 
-    def draw_architecture(self, archirecture):
+    def draw_architecture(self, archirecture, num_operations, filename):
 
-        dag = nx.DiGraph()
+        dag = gv.Digraph()
         for child in self.dag.nodes():
             edges = []
             for parent in self.dag.predecessors(child):
-                operations = list(map(str, self.dag.edges[parent, child]['operations']))
+                operations = list(map(str, self.operations))
                 weights = nn.functional.softmax(archirecture[str((parent, child))])
                 edges.append(((parent, child), max(zip(weights, operations))))
             if edges:
-                edges = sorted(edges, key=itemgetter(1))[-2:]
+                edges = sorted(edges, key=itemgetter(1))[-num_operations:]
                 for (parent, child), (weight, operation) in edges:
-                    dag.add_edge(parent, child, operation=operation)
+                    dag.edge(parent, child, label=operation)
+        return dag.render(filename=filename, format='png')
 
-        edge_labels = {
-            (parent, child): attribute['operation']
-            for parent, child, attribute in dag.edges(data=True)
-        }
+    def draw_normal_architecture(self, num_operations, filename):
+        return self.draw_architecture(self.architecture.normal, num_operations, filename)
 
-        figure = plt.figure()
-        pos = nx.spring_layout(dag)
-        nx.draw_networkx_nodes(dag, pos)
-        nx.draw_networkx_labels(dag, pos)
-        nx.draw_networkx_edges(dag, pos)
-        nx.draw_networkx_edge_labels(dag, pos, edge_labels)
-        return figure
-
-    def draw_normal_architecture(self):
-        return self.draw_architecture(self.architecture.normal)
-
-    def draw_reduction_architecture(self):
-        return self.draw_architecture(self.architecture.reduction)
+    def draw_reduction_architecture(self, num_operations, filename):
+        return self.draw_architecture(self.architecture.reduction, num_operations, filename)
