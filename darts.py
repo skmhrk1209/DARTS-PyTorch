@@ -129,7 +129,7 @@ class DARTS(nn.Module):
         self.network.global_avg_pool2d = nn.AdaptiveAvgPool2d(1)
         self.network.linear = nn.Linear(in_channels_2nd, self.num_classes, bias=True)
 
-    def forward_cell(self, cell, reduction, child, node_outputs):
+    def forward_cell_(self, cell, reduction, child, node_outputs):
         """forward in the given cell.
 
         Args:
@@ -147,6 +147,26 @@ class DARTS(nn.Module):
                     operation(self.forward_cell(cell, reduction, parent, node_outputs)) * weight
                     for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))], dim=0))
                 ) for parent in self.dag.predecessors(child))
+        return node_outputs[child]
+
+    def forward_cell(self, cell, reduction, child, node_outputs):
+        """forward in the given cell.
+
+        Args:
+            cell (dict): A dict with edges as keys and operations as values.
+            reduction (bool): Whether the cell performs spatial reduction.
+            child (int): The output node in the cell.
+            node_outputs (dict): A dict with node as keys and its outputs as values.
+                This is to avoid duplicate calculation in recursion.
+
+        """
+        architecture = self.architecture.reduction if reduction else self.architecture.normal
+        if self.dag.predecessors(child):
+            if child not in node_outputs:
+                node_outputs[child] = 0
+                for parent in self.dag.predecessors(child):
+                    for operation, weight in zip(cell[str((parent, child))], nn.functional.softmax(architecture[str((parent, child))], dim=0)):
+                        node_outputs[child] += operation(self.forward_cell(cell, reduction, parent, node_outputs)) * weight
         return node_outputs[child]
 
     def forward(self, input):
