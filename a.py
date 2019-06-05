@@ -84,7 +84,7 @@ def main():
 
     output.backward()
 
-    distributed.all_reduce(input.grad)
+    distributed.all_reduce(input.grad.data)
     print(input.grad)
 
 if __name__ == '__main__':
