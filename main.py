@@ -258,12 +258,19 @@ def main():
                     scaled_train_loss.backward()
 
                 def f(module):
-                    if isinstance(module, (Conv2d)):
+                    
+
+                def g(module):
+                    if isinstance(module, (DilatedConv2d, SeparableConv2d, Conv2d)):
                         for p in module.parameters():
                             if p.grad is None:
                                 if config.global_rank == 0:
                                     print(module)
                                 break
+                    else:
+                        for module in self.children():
+                            g(module)
+                    
                 model.network.apply(f)
                 distributed.barrier()
 
