@@ -10,7 +10,7 @@
     "architecture_beta1": 0.5,
     "architecture_beta2": 0.999,
     "architecture_weight_decay": 1e-3,
-    "local_batch_size": 64,
+    "local_batch_size": 128,
     "global_batch_denom": 64,
     "epsilon": 1e-2,
     "checkpoint_directory": "checkpoints",
