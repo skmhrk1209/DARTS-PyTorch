@@ -9,9 +9,6 @@ from torchvision import datasets
 from torchvision import transforms
 from torchvision import models
 from tensorboardX import SummaryWriter
-from apex import amp
-from apex import optimizers
-from apex import parallel
 from darts import *
 from ops import *
 import numpy as np
@@ -23,18 +20,6 @@ import json
 import time
 import os
 
-parser = argparse.ArgumentParser(description='DARTS: Differentiable Architecture Search')
-parser.add_argument('--config', type=str, default='config.json')
-parser.add_argument('--checkpoint', type=str, default='')
-parser.add_argument('--training', action='store_true')
-parser.add_argument('--validation', action='store_true')
-parser.add_argument('--evaluation', action='store_true')
-parser.add_argument('--inference', action='store_true')
-parser.add_argument('--local_rank', type=int)
-args = parser.parse_args()
-
-backends.cudnn.benchmark = True
-
 
 class Dict(dict):
     def __getattr__(self, name): return self[name]
@@ -42,10 +27,12 @@ class Dict(dict):
     def __delattr__(self, name): del self[name]
 
 
-def main():
+def main(args):
+
+    backends.cudnn.benchmark = True
 
     # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main.py
-    distributed.init_process_group(backend='nccl')
+    distributed.init_process_group(backend='mpi')
 
     with open(args.config) as file:
         config = Dict(json.load(file))
@@ -99,16 +86,11 @@ def main():
         weight_decay=config.architecture_weight_decay
     )
 
-    model, [network_optimizer, architecture_optimizer] = amp.initialize(
-        models=model,
-        optimizers=[network_optimizer, architecture_optimizer],
-        opt_level=config.opt_level
-    )
-
     # nn.parallel.DistributedDataParallel and apex.parallel.DistributedDataParallel don't support multiple backward passes.
     # This means `all_reduce` is executed when the first backward pass.
     # So, we manually reduce all gradients.
     # model = parallel.DistributedDataParallel(model, delay_allreduce=True)
+
     def average_gradients(parameters):
         for parameter in parameters:
             distributed.all_reduce(parameter.grad.data)
@@ -218,8 +200,7 @@ def main():
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels)
-                with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
-                    scaled_train_loss.backward()
+                train_loss.backward()
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
@@ -233,8 +214,7 @@ def main():
 
                 val_logits = model(val_images)
                 val_loss = criterion(val_logits, val_labels)
-                with amp.scale_loss(val_loss, [network_optimizer, architecture_optimizer]) as scaled_val_loss:
-                    scaled_val_loss.backward()
+                val_loss.backward()
 
                 network_gradients = [copy.deepcopy(parameter.grad) for parameter in model.network.parameters()]
                 gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in network_gradients]))
@@ -247,16 +227,14 @@ def main():
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * -(config.network_lr / (2 * config.epsilon / gradient_norm))
-                with amp.scale_loss(train_loss, architecture_optimizer) as scaled_train_loss:
-                    scaled_train_loss.backward()
+                train_loss.backward()
 
                 for parameter, prev_parameter, prev_gradient in zip(model.network.parameters(), network_parameters, network_gradients):
                     parameter.data = (prev_parameter - prev_gradient * config.epsilon).data
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * (config.network_lr / (2 * config.epsilon / gradient_norm))
-                with amp.scale_loss(train_loss, architecture_optimizer) as scaled_train_loss:
-                    scaled_train_loss.backward()
+                train_loss.backward()
                 # ----------------------------------------------------------------
 
                 # Finally, update architecture parameter.
@@ -273,8 +251,7 @@ def main():
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels)
-                with amp.scale_loss(train_loss, network_optimizer) as scaled_train_loss:
-                    scaled_train_loss.backward()
+                train_loss.backward()
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
@@ -351,4 +328,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = argparse.ArgumentParser(description='DARTS: Differentiable Architecture Search')
+    parser.add_argument('--config', type=str, default='config.json')
+    parser.add_argument('--checkpoint', type=str, default='')
+    parser.add_argument('--training', action='store_true')
+    parser.add_argument('--validation', action='store_true')
+    parser.add_argument('--evaluation', action='store_true')
+    parser.add_argument('--inference', action='store_true')
+    parser.add_argument('--local_rank', type=int)
+    args = parser.parse_args()
+
+    main(args)
