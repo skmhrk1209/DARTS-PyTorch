@@ -4,7 +4,6 @@ from ops import *
 from operator import *
 import networkx as nx
 import graphviz as gv
-import matplotlib.pyplot as plt
 
 
 class DARTS(nn.Module):

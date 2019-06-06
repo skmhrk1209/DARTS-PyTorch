@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-N_NODE=4
+N_NODE=1
 N_GPU=8
 
 srun \

@@ -66,7 +66,7 @@ def main(args):
         num_classes=10
     ).cuda()
 
-    criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
+    criterion = nn.CrossEntropyLoss(reduction='elementwise_mean').cuda()
 
     config.global_batch_size = config.local_batch_size * config.world_size
     config.network_lr = config.network_lr * config.global_batch_size / config.global_batch_denom
@@ -203,6 +203,7 @@ def main(args):
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
+
                 # ----------------------------------------------------------------
 
                 # Apply chain rule to the approximate architecture gradient.
