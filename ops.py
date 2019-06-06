@@ -6,11 +6,9 @@ class Conv2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding,
                  affine, preactivation=True, **kwargs):
-
         super().__init__()
-
         self.module = nn.Sequential(
-            nn.ReLU() if preactivation else Identity(),
+            nn.ReLU() if preactivation else nn.Identity(),
             nn.Conv2d(
                 in_channels=in_channels,
                 out_channels=out_channels,
@@ -119,7 +117,6 @@ class SeparableConv2d(nn.Module):
 
 
 class AvgPool2d(nn.Module):
-
     def __init__(self, kernel_size, stride, padding, **kwargs):
 
         super().__init__()
@@ -135,7 +132,6 @@ class AvgPool2d(nn.Module):
 
 
 class MaxPool2d(nn.Module):
-
     def __init__(self, kernel_size, stride, padding, **kwargs):
 
         super().__init__()
@@ -153,16 +149,8 @@ class MaxPool2d(nn.Module):
 class Zero(nn.Module):
 
     def __init__(self, **kwargs):
+
         super().__init__()
 
     def forward(self, input):
         return 0.0
-
-
-class Identity(nn.Module):
-
-    def __init__(self, **kwargs):
-        super().__init__()
-
-    def forward(self, input):
-        return input

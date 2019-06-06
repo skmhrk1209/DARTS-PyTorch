@@ -5,7 +5,6 @@ from torch import optim
 from torch import utils
 from torch import backends
 from torch import autograd
-from torch.utils.data.distributed import *
 from torchvision import datasets
 from torchvision import transforms
 from torchvision import models
@@ -31,6 +30,8 @@ class Dict(dict):
 def main(args):
 
     backends.cudnn.benchmark = True
+
+    # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main.py
     distributed.init_process_group(backend='mpi')
 
     with open(args.config) as file:
@@ -66,7 +67,7 @@ def main(args):
         num_classes=10
     ).cuda()
 
-    criterion = nn.CrossEntropyLoss(reduction='elementwise_mean').cuda()
+    criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
 
     config.global_batch_size = config.local_batch_size * config.world_size
     config.network_lr = config.network_lr * config.global_batch_size / config.global_batch_denom
@@ -152,8 +153,8 @@ def main(args):
             download=True
         )
 
-        train_sampler = DistributedSampler(train_dataset)
-        val_sampler = DistributedSampler(val_dataset)
+        train_sampler = utils.data.distributed.DistributedSampler(train_dataset)
+        val_sampler = utils.data.distributed.DistributedSampler(val_dataset)
 
         train_data_loader = utils.data.DataLoader(
             dataset=train_dataset,
@@ -203,7 +204,6 @@ def main(args):
 
                 average_gradients(model.network.parameters())
                 network_optimizer.step()
-
                 # ----------------------------------------------------------------
 
                 # Apply chain rule to the approximate architecture gradient.
@@ -336,6 +336,7 @@ if __name__ == '__main__':
     parser.add_argument('--validation', action='store_true')
     parser.add_argument('--evaluation', action='store_true')
     parser.add_argument('--inference', action='store_true')
+    parser.add_argument('--local_rank', type=int)
     args = parser.parse_args()
 
     main(args)
