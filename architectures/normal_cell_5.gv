@@ -1,0 +1,10 @@
+digraph normal_cell_5 {
+	1 -> 2 [label=sep_conv_3x3]
+	0 -> 2 [label=max_pool_3x3]
+	2 -> 3 [label=dil_conv_5x5]
+	0 -> 3 [label=max_pool_3x3]
+	3 -> 4 [label=dil_conv_5x5]
+	1 -> 4 [label=dil_conv_5x5]
+	4 -> 5 [label=sep_conv_3x3]
+	2 -> 5 [label=sep_conv_5x5]
+}

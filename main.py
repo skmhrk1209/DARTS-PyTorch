@@ -204,8 +204,12 @@ def main():
                 val_images = val_images.cuda()
                 val_labels = val_labels.cuda()
 
+                # Sace current network parameters and optimizer.
+                network_state_dict = copy.deepcopy(model.network.state_dict())
+                network_optimizer_state_dict = copy.deepcopy(network_optimizer.state_dict())
+
                 # `w` in the paper.
-                network_parameters = [parameter.clone().detach() for parameter in model.network.parameters()]
+                network_parameters_1st = copy.deepcopy(list(model.network.parameters()))
 
                 # Approximate w*(α) by adapting w using only a single training step,
                 # without solving the inner optimization completely by training until convergence.
@@ -232,22 +236,22 @@ def main():
                 with amp.scale_loss(val_loss, [network_optimizer, architecture_optimizer]) as scaled_val_loss:
                     scaled_val_loss.backward()
 
-                network_gradients = [parameter.grad.clone().detach() for parameter in model.network.parameters()]
-                gradient_norm = torch.norm(torch.cat([gradient.reshape(-1) for gradient in network_gradients]))
+                network_parameters_2nd = copy.deepcopy(list(model.network.parameters()))
+                gradient_norm = torch.norm(torch.cat([parameter.grad.reshape(-1) for parameter in network_parameters_2nd]))
                 # ----------------------------------------------------------------
 
                 # Avoid calculate hessian-vector product using the finite difference approximation.
                 # ----------------------------------------------------------------
-                for parameter, parameter_, gradient in zip(model.network.parameters(), network_parameters, network_gradients):
-                    parameter.data = (parameter_ + gradient * config.epsilon).data
+                for parameter, parameter_1st, parameter_2nd in zip(model.network.parameters(), network_parameters_1st, network_parameters_2nd):
+                    parameter.data = (parameter_1st + parameter_2nd.grad * config.epsilon).data
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * -(config.network_lr / (2 * config.epsilon / gradient_norm))
                 with amp.scale_loss(train_loss, architecture_optimizer) as scaled_train_loss:
                     scaled_train_loss.backward()
 
-                for parameter, parameter_, gradient in zip(model.network.parameters(), network_parameters, network_gradients):
-                    parameter.data = (parameter_ - gradient * config.epsilon).data
+                for parameter, parameter_1st, parameter_2nd in zip(model.network.parameters(), network_parameters_1st, network_parameters_2nd):
+                    parameter.data = (parameter_1st - parameter_2nd.grad * config.epsilon).data
 
                 train_logits = model(train_images)
                 train_loss = criterion(train_logits, train_labels) * (config.network_lr / (2 * config.epsilon / gradient_norm))
@@ -259,9 +263,9 @@ def main():
                 average_gradients(model.architecture.parameters())
                 architecture_optimizer.step()
 
-                # Restore previous network parameter.
-                for parameter, parameter_ in zip(model.network.parameters(), network_parameters):
-                    parameter.data = parameter_.data
+                # Restore previous network parameters and optimizer.
+                model.network.load_state_dict(network_state_dict)
+                network_optimizer.load_state_dict(network_optimizer_state_dict)
 
                 # Update network parameter.
                 # ----------------------------------------------------------------
