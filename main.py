@@ -23,18 +23,6 @@ import json
 import time
 import os
 
-parser = argparse.ArgumentParser(description='DARTS: Differentiable Architecture Search')
-parser.add_argument('--config', type=str, default='config.json')
-parser.add_argument('--checkpoint', type=str, default='')
-parser.add_argument('--training', action='store_true')
-parser.add_argument('--validation', action='store_true')
-parser.add_argument('--evaluation', action='store_true')
-parser.add_argument('--inference', action='store_true')
-parser.add_argument('--local_rank', type=int)
-args = parser.parse_args()
-
-backends.cudnn.benchmark = True
-
 
 class Dict(dict):
     def __getattr__(self, name): return self[name]
@@ -42,9 +30,21 @@ class Dict(dict):
     def __delattr__(self, name): del self[name]
 
 
+# python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main.py
 def main():
 
-    # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main.py
+    parser = argparse.ArgumentParser(description='DARTS: Differentiable Architecture Search')
+    parser.add_argument('--config', type=str, default='config.json')
+    parser.add_argument('--checkpoint', type=str, default='')
+    parser.add_argument('--training', action='store_true')
+    parser.add_argument('--validation', action='store_true')
+    parser.add_argument('--evaluation', action='store_true')
+    parser.add_argument('--inference', action='store_true')
+    parser.add_argument('--local_rank', type=int)
+    args = parser.parse_args()
+
+    backends.cudnn.benchmark = True
+
     distributed.init_process_group(backend='nccl')
 
     with open(args.config) as file:
