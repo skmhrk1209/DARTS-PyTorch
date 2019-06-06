@@ -31,17 +31,7 @@ class Dict(dict):
 
 
 # python -m torch.distributed.launch --nproc_per_node=NUM_GPUS main.py
-def main():
-
-    parser = argparse.ArgumentParser(description='DARTS: Differentiable Architecture Search')
-    parser.add_argument('--config', type=str, default='config.json')
-    parser.add_argument('--checkpoint', type=str, default='')
-    parser.add_argument('--training', action='store_true')
-    parser.add_argument('--validation', action='store_true')
-    parser.add_argument('--evaluation', action='store_true')
-    parser.add_argument('--inference', action='store_true')
-    parser.add_argument('--local_rank', type=int)
-    args = parser.parse_args()
+def main(args):
 
     backends.cudnn.benchmark = True
 
@@ -351,4 +341,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = argparse.ArgumentParser(description='DARTS: Differentiable Architecture Search')
+    parser.add_argument('--config', type=str, default='config.json')
+    parser.add_argument('--checkpoint', type=str, default='')
+    parser.add_argument('--training', action='store_true')
+    parser.add_argument('--validation', action='store_true')
+    parser.add_argument('--evaluation', action='store_true')
+    parser.add_argument('--inference', action='store_true')
+    parser.add_argument('--local_rank', type=int)
+    args = parser.parse_args()
+
+    main(args)
