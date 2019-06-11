@@ -150,6 +150,26 @@ class MaxPool2d(nn.Module):
         return self.module(input)
 
 
+class Identity(nn.Module):
+
+    def __init__(self, in_channels, out_channels, stride, affine, preactivation=True, **kwargs):
+
+        super().__init__()
+
+        self.module = nn.Identity() if stride == 1 and in_channels == out_channels else Conv2d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=1,
+            stride=stride,
+            padding=0,
+            affine=affine,
+            preactivation=preactivation
+        )
+
+    def forward(self, input):
+        return self.module(input)
+
+
 class Zero(nn.Module):
 
     def __init__(self, **kwargs):
@@ -158,3 +178,46 @@ class Zero(nn.Module):
 
     def forward(self, input):
         return 0.0
+
+
+class ScheduledDropPath(nn.Module):
+
+    def __init__(self, drop_prob, gamma):
+
+        super().__init__()
+
+        self.drop_prob = drop_prob
+
+    def forward(self, input):
+
+        if self.drop_prob > 0:
+            gamma = self.gamma(self.epoch) if callable(self.gamma) else self.gamma
+            drop_prob = self.drop_prob * gamma
+            keep_prob = 1 - drop_prob
+            input = input * input.new_full((input.size(0), 1, 1, 1), keep_prob).bernoulli()
+            input = input / keep_prob
+
+        return input
+
+    def set_epoch(self, epoch):
+
+        self.epoch = epoch
+
+
+class Cutout(object):
+
+    def __init__(self, size):
+
+        self.size = size
+
+    def __call__(self, image):
+
+        y_min = torch.randint(image.size(-2) - self.size[-2], (1,))
+        x_min = torch.randint(image.size(-1) - self.size[-1], (1,))
+
+        y_max = y_min + self.size[-2]
+        x_max = x_min + self.size[-1]
+
+        image[..., y_min:y_max, x_min:x_max] = 0
+
+        return image

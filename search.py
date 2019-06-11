@@ -53,29 +53,31 @@ def main(args):
 
     model = DARTS(
         operations=dict(
-            sep_conv_3x3=functools.partial(SeparableConv2d, kernel_size=3, padding=1, affine=False),
-            sep_conv_5x5=functools.partial(SeparableConv2d, kernel_size=5, padding=2, affine=False),
-            dil_conv_3x3=functools.partial(DilatedConv2d, kernel_size=3, padding=2, dilation=2, affine=False),
-            dil_conv_5x5=functools.partial(DilatedConv2d, kernel_size=5, padding=4, dilation=2, affine=False),
+            sep_conv_3x3=functools.partial(SeparableConv2d, kernel_size=3, padding=1),
+            sep_conv_5x5=functools.partial(SeparableConv2d, kernel_size=5, padding=2),
+            dil_conv_3x3=functools.partial(DilatedConv2d, kernel_size=3, padding=2, dilation=2),
+            dil_conv_5x5=functools.partial(DilatedConv2d, kernel_size=5, padding=4, dilation=2),
             avg_pool_3x3=functools.partial(AvgPool2d, kernel_size=3, padding=1),
             max_pool_3x3=functools.partial(MaxPool2d, kernel_size=3, padding=1),
-            identity=functools.partial(Conv2d, kernel_size=1, padding=0, affine=False),
+            identity=functools.partial(Identity),
             zero=functools.partial(Zero)
         ),
         num_nodes=6,
         num_input_nodes=2,
         num_cells=8,
         reduction_cells=[2, 5],
-        discrete_mode=False,
         num_top_operations=2,
         num_channels=16,
-        num_classes=10
+        num_classes=10,
+        drop_prob=config.drop_prob,
+        gamma=lambda epoch: epoch / config.num_epochs
     ).cuda()
 
     criterion = nn.CrossEntropyLoss(reduction='mean').cuda()
 
     config.global_batch_size = config.local_batch_size * config.world_size
     config.network_lr = config.network_lr * config.global_batch_size / config.global_batch_denom
+    config.network_lr_min = config.network_lr_min * config.global_batch_size / config.global_batch_denom
     config.architecture_lr = config.architecture_lr * config.global_batch_size / config.global_batch_denom
 
     network_optimizer = torch.optim.SGD(
@@ -117,6 +119,67 @@ def main(args):
         last_epoch = checkpoint.last_epoch
         global_step = checkpoint.global_step
 
+    lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+        optimizer=network_optimizer,
+        T_max=config.num_epochs,
+        eta_min=config.network_lr_min,
+        last_epoch=last_epoch
+    )
+
+    train_dataset = datasets.CIFAR10(
+        root='cifar10',
+        train=True,
+        transform=transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=(0.49139968, 0.48215827, 0.44653124),
+                std=(0.24703233, 0.24348505, 0.26158768)
+            )
+        ]),
+        download=True
+    )
+    train_datasets = [
+        utils.data.Subset(train_dataset, indices)
+        for indices in np.array_split(range(len(train_dataset)), 2)
+    ]
+    val_dataset = datasets.CIFAR10(
+        root='cifar10',
+        train=False,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=(0.49139968, 0.48215827, 0.44653124),
+                std=(0.24703233, 0.24348505, 0.26158768)
+            )
+        ]),
+        download=True
+    )
+
+    train_samplers = [
+        utils.data.distributed.DistributedSampler(train_dataset)
+        for train_dataset in train_datasets
+    ]
+    val_sampler = utils.data.distributed.DistributedSampler(val_dataset)
+
+    train_data_loaders = [
+        utils.data.DataLoader(
+            dataset=train_dataset,
+            batch_size=config.local_batch_size,
+            sampler=train_sampler,
+            num_workers=config.num_workers,
+            pin_memory=True
+        ) for train_dataset, train_sampler in zip(train_datasets, train_samplers)
+    ]
+    val_data_loader = utils.data.DataLoader(
+        dataset=val_dataset,
+        batch_size=config.local_batch_size,
+        sampler=val_sampler,
+        num_workers=config.num_workers,
+        pin_memory=True
+    )
+
     if config.global_rank == 0:
         os.makedirs(config.checkpoint_directory, exist_ok=True)
         os.makedirs(config.event_directory, exist_ok=True)
@@ -125,71 +188,11 @@ def main(args):
 
     if config.training:
 
-        lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
-            optimizer=network_optimizer,
-            T_max=config.num_epochs,
-            eta_min=config.network_lr_min,
-            last_epoch=last_epoch
-        )
-
-        train_dataset = datasets.CIFAR10(
-            root='cifar10',
-            train=True,
-            transform=transforms.Compose([
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=(0.49139968, 0.48215827, 0.44653124),
-                    std=(0.24703233, 0.24348505, 0.26158768)
-                )
-            ]),
-            download=True
-        )
-        train_datasets = [
-            utils.data.Subset(train_dataset, indices)
-            for indices in np.array_split(range(len(train_dataset)), 2)
-        ]
-        val_dataset = datasets.CIFAR10(
-            root='cifar10',
-            train=False,
-            transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=(0.49139968, 0.48215827, 0.44653124),
-                    std=(0.24703233, 0.24348505, 0.26158768)
-                )
-            ]),
-            download=True
-        )
-
-        train_samplers = [
-            utils.data.distributed.DistributedSampler(train_dataset)
-            for train_dataset in train_datasets
-        ]
-        val_sampler = utils.data.distributed.DistributedSampler(val_dataset)
-
-        train_data_loaders = [
-            utils.data.DataLoader(
-                dataset=train_dataset,
-                batch_size=config.local_batch_size,
-                sampler=train_sampler,
-                num_workers=config.num_workers,
-                pin_memory=True
-            ) for train_dataset, train_sampler in zip(train_datasets, train_samplers)
-        ]
-        val_data_loader = utils.data.DataLoader(
-            dataset=val_dataset,
-            batch_size=config.local_batch_size,
-            sampler=val_sampler,
-            num_workers=config.num_workers,
-            pin_memory=True
-        )
-
         for epoch in range(last_epoch + 1, config.num_epochs):
 
             for train_sampler in train_samplers:
                 train_sampler.set_epoch(epoch)
+            model.set_epoch(epoch)
 
             model.train()
 
@@ -376,6 +379,37 @@ def main(args):
                         global_step=global_step
                     )
                     print(f'[validation] epoch: {epoch} loss: {average_loss:.4f} accuracy: {average_accuracy:.4f}')
+
+    if config.validation:
+
+        model.eval()
+
+        with torch.no_grad():
+
+            average_loss = 0
+            average_accuracy = 0
+
+            for local_step, (images, labels) in enumerate(val_data_loader):
+
+                images = images.cuda(non_blocking=True)
+                labels = labels.cuda(non_blocking=True)
+
+                logits = model(images)
+                loss = criterion(logits, labels)
+
+                predictions = torch.argmax(logits, dim=1)
+                accuracy = torch.mean((predictions == labels).float())
+
+                average_tensors([loss, accuracy])
+
+                average_loss += loss
+                average_accuracy += accuracy
+
+            average_loss = average_loss / (local_step + 1)
+            average_accuracy = average_accuracy / (local_step + 1)
+
+        if config.global_rank == 0:
+            print(f'[validation] epoch: {last_epoch} loss: {average_loss:.4f} accuracy: {average_accuracy:.4f}')
 
     if config.global_rank == 0:
         summary_writer.close()
