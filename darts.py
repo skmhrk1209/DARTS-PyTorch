@@ -9,17 +9,14 @@ import graphviz as gv
 
 class DARTS(nn.Module):
     """Differentiable architecture search module.
-
     Based on the following papers.
     1. [DARTS: Differentiable Architecture Search](https://arxiv.org/pdf/1806.09055.pdf)
     2. ...
-
     """
 
     def __init__(self, operations, num_nodes, num_input_nodes, num_cells, reduction_cells,
-                 num_top_operations, num_channels, num_classes, drop_prob=0, gamma=1):
+                 num_predecessors, num_channels, num_classes, drop_prob_fn):
         """Build DARTS with the given operations.
-
         Args:
             operations (dict): Dict with name as keys and nn.Module initializer
                 that takes in_channels, out_channels, stride as arguments as values.
@@ -30,7 +27,6 @@ class DARTS(nn.Module):
             num_top_operations (int): Number of top strongest operations retained in discrete architecture.
             num_channels (int): Number of channels of the first cell.
             num_classes (int): Number of classes for classification.
-
         """
         super().__init__()
 
@@ -39,11 +35,10 @@ class DARTS(nn.Module):
         self.num_input_nodes = num_input_nodes
         self.num_cells = num_cells
         self.reduction_cells = reduction_cells
-        self.num_top_operations = num_top_operations
+        self.num_predecessors = num_predecessors
         self.num_channels = num_channels
         self.num_classes = num_classes
-        self.drop_prob = drop_prob
-        self.gamma = gamma
+        self.scheduled_drop_path = ScheduledDropPath(drop_prob_fn)
 
         self.build_dag()
         self.build_architecture()
@@ -63,6 +58,27 @@ class DARTS(nn.Module):
             for m in range(self.num_nodes):
                 if m < n:
                     self.dag.reduction.add_edge(m, n)
+
+    def build_discrete_dag(self):
+        """Build Directed Acyclic Graph that represents each cell.
+        """
+        for n in self.dag.normal.nodes():
+            predecessors = (
+                (torch.max(nn.functional.softmax(self.architecture.normal[str((m, n))], dim=0)), m)
+                for m in self.dag.normal.predecessors(n)
+            )
+            predecessors = sorted(predecessors, key=itemgetter(0))
+            for weight, m in predecessors[:-self.num_predecessors]:
+                self.dag.normal.remove_edge(m, n)
+
+        for n in self.dag.reduction.nodes():
+            predecessors = (
+                (torch.max(nn.functional.softmax(self.architecture.reduction[str((m, n))], dim=0)), m)
+                for m in self.dag.reduction.predecessors(n)
+            )
+            predecessors = sorted(predecessors, key=itemgetter(0))
+            for weight, m in predecessors[:-self.num_predecessors]:
+                self.dag.reduction.remove_edge(m, n)
 
     def build_architecture(self):
         """Build parameters that represent the cell architectures (normal and reduction).
@@ -136,36 +152,30 @@ class DARTS(nn.Module):
 
         self.network.global_avg_pool2d = nn.AdaptiveAvgPool2d(1)
         self.network.linear = nn.Linear(out_channels[-1], self.num_classes, bias=True)
-        self.network.scheduled_drop_path = ScheduledDropPath(self.drop_prob, self.gamma)
-
-    def build_discrete_dag(self):
-        """Build Directed Acyclic Graph that represents each cell.
-        """
-        for n in self.dag.normal.nodes():
-            predecessors = ((torch.max(
-                nn.functional.softmax(self.architecture.normal[str((m, n))], dim=0)
-            ), m) for m in self.dag.normal.predecessors(n))
-            predecessors = sorted(predecessors, key=itemgetter(0))[:-self.num_top_operations]
-            for m in predecessors:
-                self.dag.normal.remove_edge(m, n)
-
-        for n in self.dag.reduction.nodes():
-            predecessors = ((torch.max(
-                nn.functional.softmax(self.architecture.reduction[str((m, n))], dim=0)
-            ), m) for m in self.dag.reduction.predecessors(n))
-            predecessors = sorted(predecessors, key=itemgetter(0))[:-self.num_top_operations]
-            for m in predecessors:
-                self.dag.reduction.remove_edge(m, n)
 
     def build_discrete_network(self):
         """Build modules that represent the whole network.
         """
+        self.network = nn.ParameterDict()
+
         # NOTE: Why multiplier is 3?
         num_channels = self.num_channels
         out_channels = num_channels * 3
-        out_channels = [out_channels] * self.num_input_nodes
 
-        for i, cell in enumerate(self.network.cells):
+        self.network.conv = Conv2d(
+            in_channels=3,
+            out_channels=out_channels,
+            stride=1,
+            kernel_size=3,
+            padding=1,
+            affine=True,
+            preactivation=False
+        )
+
+        out_channels = [out_channels] * self.num_input_nodes
+        self.network.cells = nn.ModuleList()
+
+        for i in range(self.num_cells):
 
             reduction = i in self.reduction_cells
             num_channels = num_channels << 1 if reduction else num_channels
@@ -173,7 +183,7 @@ class DARTS(nn.Module):
             dag = self.dag.reduction if reduction else self.dag.normal
             architecture = self.architecture.reduction if reduction else self.architecture.normal
 
-            cell.update({
+            cell = nn.ModuleDict({
                 # NOTE: Should be factorized reduce?
                 **{
                     str((n - self.num_input_nodes, n)): Conv2d(
@@ -199,17 +209,19 @@ class DARTS(nn.Module):
             })
 
             out_channels.append(num_channels * (self.num_nodes - self.num_input_nodes))
+            self.network.cells.append(cell)
+
+        self.network.global_avg_pool2d = nn.AdaptiveAvgPool2d(1)
+        self.network.linear = nn.Linear(out_channels[-1], self.num_classes, bias=True)
 
     def forward_cell(self, cell, reduction, cell_outputs, node_outputs, n):
         """forward in the given cell.
-
         Args:
             cell (dict): A dict with edges as keys and operations as values.
             reduction (bool): Whether the cell performs spatial reduction.
             node_outputs (dict): A dict with node as keys and its outputs as values.
                 This is to avoid duplicate calculation in recursion.
             n (int): The output node in the cell.
-
         """
         dag = self.dag.reduction if reduction else self.dag.normal
         architecture = self.architecture.reduction if reduction else self.architecture.normal
@@ -218,7 +230,7 @@ class DARTS(nn.Module):
             if n in range(self.num_input_nodes):
                 node_outputs[n] = cell[str((n - self.num_input_nodes, n))](cell_outputs[n - self.num_input_nodes])
             else:
-                node_outputs[n] = sum(self.network.scheduled_drop_path(
+                node_outputs[n] = sum(self.scheduled_drop_path(
                     sum(weight * operation(self.forward_cell(cell, reduction, cell_outputs, node_outputs, m))
                         for weight, operation in zip(nn.functional.softmax(architecture[str((m, n))], dim=0), cell[str((m, n))]))
                     if isinstance(cell[str((m, n))], nn.ModuleList) else
@@ -240,30 +252,27 @@ class DARTS(nn.Module):
         output = self.network.linear(output)
         return output
 
-    def render_discrete_architecture(self, reduction, name, directory):
+    def render_architecture(self, reduction, name, directory):
         """Render the given architecture.
-
         Args:
             architecture (dict): A dict with edges as keys and parameters as values.
             name (str): Name of the given architecture for saving.
             directory (str): Directory for saving.
-
         """
         dag = self.dag.reduction if reduction else self.dag.normal
         architecture = self.architecture.reduction if reduction else self.architecture.normal
 
         discrete_dag = gv.Digraph(name)
         for n in dag.nodes():
-            operations = sorted(((*max(zip(
+            operations = sorted(((*max(((weight, operation) for weight, operation in zip(
                 nn.functional.softmax(architecture[str((m, n))], dim=0),
                 self.operations.keys()
-            ), key=itemgetter(0)), m) for m in dag.predecessors(n)), key=itemgetter(0))
-            for weight, operation, m in operations[:-self.num_top_operations]:
+            ) if 'zero' not in operation), key=itemgetter(0)), m) for m in dag.predecessors(n)), key=itemgetter(0))
+            for weight, operation, m in operations[:-self.num_predecessors]:
                 discrete_dag.edge(str(m), str(n), label='', color='white')
-            for weight, operation, m in operations[-self.num_top_operations:]:
+            for weight, operation, m in operations[-self.num_predecessors:]:
                 discrete_dag.edge(str(m), str(n), label=operation, color='black')
         return discrete_dag.render(directory=directory, format='png')
 
     def set_epoch(self, epoch):
-
-        self.network.scheduled_drop_path.set_epoch(epoch)
+        self.scheduled_drop_path.set_epoch(epoch)
